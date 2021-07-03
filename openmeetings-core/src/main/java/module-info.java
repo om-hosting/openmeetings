@@ -21,8 +21,6 @@ module apache.openmeetings.core {
 
 	requires transitive org.apache.commons.io;
 
-	requires transitive spring.context;
-
 	requires kurento.client;
 	requires kurento.commons;
 	requires kurento.jsonrpc.client;
@@ -35,7 +33,6 @@ module apache.openmeetings.core {
 	requires jodconverter.core;
 	requires jodconverter.local;
 	requires org.apache.directory.ldap.api.all;
-	requires tika.core;
 	requires tika.parsers;
 	requires javax.inject;
 	requires wicket.ioc;
