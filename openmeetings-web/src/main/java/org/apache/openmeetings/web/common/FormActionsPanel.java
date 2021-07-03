@@ -18,7 +18,7 @@
  */
 package org.apache.openmeetings.web.common;
 
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelDangerConfirm;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelDangerConfirm;
 
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.AjaxLink;
@@ -35,7 +35,7 @@ public abstract class FormActionsPanel<T> extends Panel {
 	private AjaxButton saveBtn;
 	private AjaxLink<Void> purgeBtn;
 
-	public FormActionsPanel(String id, Form<T> form) {
+	protected FormActionsPanel(String id, Form<T> form) {
 		super(id);
 		this.form = form;
 		setOutputMarkupId(true);
@@ -72,7 +72,7 @@ public abstract class FormActionsPanel<T> extends Panel {
 			public void onClick(AjaxRequestTarget target) {
 				// repaint the feedback panel so that it is hidden
 				target.add(feedback);
-				setNewVisible(false);
+				setNewRecordVisible(false);
 				onRefreshSubmit(target, form);
 			}
 		});
@@ -83,7 +83,7 @@ public abstract class FormActionsPanel<T> extends Panel {
 			public void onClick(AjaxRequestTarget target) {
 				// repaint the feedback panel so that it is hidden
 				target.add(feedback);
-				setNewVisible(false);
+				setNewRecordVisible(false);
 				onPurgeSubmit(target, form);
 			}
 		};
@@ -101,7 +101,7 @@ public abstract class FormActionsPanel<T> extends Panel {
 	 *
 	 * @param visible - new visibility
 	 */
-	public void setNewVisible(boolean visible) {
+	public void setNewRecordVisible(boolean visible) {
 		// for admin only, will be implemented in admin
 	}
 

@@ -27,6 +27,7 @@ import org.apache.openmeetings.db.entity.room.RoomGroup;
 import org.apache.openmeetings.db.entity.room.RoomModerator;
 import org.apache.openmeetings.db.entity.user.GroupUser;
 import org.apache.openmeetings.db.entity.user.User;
+import org.apache.wicket.util.lang.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,7 @@ public class AuthLevelUtil {
 
 	public static boolean check(Set<User.Right> rights, User.Right level) {
 		boolean result = rights.contains(level);
-		log.debug(String.format("Level %s :: %s", level, result ? "[GRANTED]" : "[DENIED]"));
+		log.debug("Level {} :: {}", level, result ? "[GRANTED]" : "[DENIED]");
 		return result;
 	}
 
@@ -50,11 +51,13 @@ public class AuthLevelUtil {
 		if (u == null) {
 			return result;
 		}
-		if (hasAdminLevel(u.getRights())) {
-			//admin user get superModerator level, no-one can kick him/her
-			result.add(Room.Right.SUPER_MODERATOR);
-		} else if (r.isAppointment() && a != null && u.getId().equals(a.getOwner().getId())) {
+		if (//admin user get superModerator level, no-one can kick him/her
+			hasAdminLevel(u.getRights())
+			// user personal room
+			|| Objects.equal(u.getId(), r.getOwnerId())
 			// appointment owner is super moderator
+			|| (r.isAppointment() && a != null && u.getId().equals(a.getOwner().getId())))
+		{
 			result.add(Room.Right.SUPER_MODERATOR);
 		}
 		if (result.isEmpty()) {

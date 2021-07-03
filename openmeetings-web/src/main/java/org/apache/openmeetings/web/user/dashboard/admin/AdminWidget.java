@@ -21,7 +21,6 @@ package org.apache.openmeetings.web.user.dashboard.admin;
 import org.apache.openmeetings.web.app.Application;
 import org.apache.wicket.model.Model;
 import org.wicketstuff.dashboard.AbstractWidget;
-import org.wicketstuff.dashboard.Widget;
 import org.wicketstuff.dashboard.WidgetLocation;
 import org.wicketstuff.dashboard.web.WidgetView;
 
@@ -30,20 +29,21 @@ public class AdminWidget extends AbstractWidget {
 	public static final String WIDGET_ID_ADMIN = "AdminWidget";
 
 	public AdminWidget() {
-		super();
 		location = new WidgetLocation(0, 2);
-		init();
 	}
 
 	@Override
-	public void init() {
-		super.init();
-		title = Application.getString("dashboard.widget.admin.title");
-		id = WIDGET_ID_ADMIN;
+	public String getId() {
+		return WIDGET_ID_ADMIN;
+	}
+
+	@Override
+	public String getTitle() {
+		return Application.getString("dashboard.widget.admin.title");
 	}
 
 	@Override
 	public WidgetView createView(String viewId) {
-		return new AdminWidgetView(viewId, new Model<Widget>(this));
+		return new AdminWidgetView(viewId, new Model<>(this));
 	}
 }

@@ -37,6 +37,9 @@
 .nettest .test-container button.not-started i::before {
 	content: '\f04b';
 }
+.nettest .test-container button.started i {
+	animation: fa-spin 2s linear infinite;
+}
 .nettest .test-container button.started i::before {
 	content: '\f110';
 }
@@ -50,8 +53,6 @@
 	max-height: calc(100% - 170px);
 	margin-top: 20px;
 	overflow: auto;
-}
-.nettest output {
 }
 .nettest output .module {
 	color: #6b0df7;

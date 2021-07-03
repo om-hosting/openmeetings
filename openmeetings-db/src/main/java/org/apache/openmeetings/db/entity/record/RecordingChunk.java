@@ -32,6 +32,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
@@ -60,6 +62,7 @@ import org.apache.openmeetings.db.entity.HistoricalEntity;
 @NamedQuery(name = "getScreenChunkByRecording", query = "SELECT c FROM RecordingChunk c WHERE c.recording.id = :recordingId AND c.type = :screen")
 @Table(name = "recording_chunk")
 @XmlRootElement(name = "flvrecordingmetadata")
+@XmlAccessorType(XmlAccessType.FIELD)
 public class RecordingChunk extends HistoricalEntity {
 	private static final long serialVersionUID = 1L;
 	@XmlType(namespace="org.apache.openmeetings.record.chunk")
@@ -90,12 +93,12 @@ public class RecordingChunk extends HistoricalEntity {
 	@XmlTransient
 	private Recording recording;
 
-	@Column(name = "start")
+	@Column(name = "ch_start")
 	@XmlElement(name = "recordStart")
 	@XmlJavaTypeAdapter(DateAdapter.class)
 	private Date start;
 
-	@Column(name = "end")
+	@Column(name = "ch_end")
 	@XmlElement(name = "recordEnd", required = false)
 	@XmlJavaTypeAdapter(DateAdapter.class)
 	private Date end;

@@ -30,11 +30,11 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestDatabaseStructureAppointment extends AbstractJUnitDefaults {
+class TestDatabaseStructureAppointment extends AbstractJUnitDefaults {
 	private static final Logger log = LoggerFactory.getLogger(TestDatabaseStructureAppointment.class);
 
 	@Test
-	public void testAddingGroup() {
+	void testAddingGroup() {
 		try {
 			Calendar cal = Calendar.getInstance();
 			cal.set(2008, 9, 2);

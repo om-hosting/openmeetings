@@ -22,7 +22,7 @@
 	<parent>
 		<groupId>org.apache.openmeetings</groupId>
 		<artifactId>openmeetings-parent</artifactId>
-		<version>5.0.0-M4-SNAPSHOT</version>
+		<version>6.1.0-SNAPSHOT</version>
 		<relativePath>..</relativePath>
 	</parent>
 	<artifactId>openmeetings-web</artifactId>
@@ -39,8 +39,8 @@
 			<id>mysql</id>
 			<properties>
 				<db>mysql</db>
-				<db_user>root</db_user>
-				<db_pass></db_pass>
+				<db_user>om_db_admin</db_user>
+				<db_pass>12345</db_pass>
 			</properties>
 			<dependencies>
 				<dependency>
@@ -56,6 +56,14 @@
 				<db>mssql</db>
 				<db_user>sa</db_user>
 				<db_pass>ass</db_pass>
+			</properties>
+		</profile>
+		<profile>
+			<id>oracle</id>
+			<properties>
+				<db>oracle</db>
+				<db_user>system</db_user>
+				<db_pass>openmeetings_test</db_pass>
 			</properties>
 		</profile>
 		<profile>
@@ -77,9 +85,116 @@
 	<build>
 		<plugins>
 			<plugin>
+				<groupId>com.github.eirslett</groupId>
+				<artifactId>frontend-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>install-node</id>
+						<goals><goal>install-node-and-npm</goal></goals>
+					</execution>
+					<execution>
+						<id>main-install</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<workingDirectory>src/main/front/main</workingDirectory>
+						</configuration>
+					</execution>
+					<execution>
+						<id>main</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<arguments>run build</arguments>
+							<workingDirectory>src/main/front/main</workingDirectory>
+							<environmentVariables>
+								<outDir>${project.build.directory}/generated-sources/js/org/apache/openmeetings/web/common/</outDir>
+							</environmentVariables>
+						</configuration>
+					</execution>
+					<execution>
+						<id>chat-install</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<workingDirectory>src/main/front/chat</workingDirectory>
+						</configuration>
+					</execution>
+					<execution>
+						<id>chat</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<arguments>run build</arguments>
+							<workingDirectory>src/main/front/chat</workingDirectory>
+							<environmentVariables>
+								<outDir>${project.build.directory}/generated-sources/js/org/apache/openmeetings/web/user/chat/</outDir>
+							</environmentVariables>
+						</configuration>
+					</execution>
+					<execution>
+						<id>settings-install</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<workingDirectory>src/main/front/settings</workingDirectory>
+						</configuration>
+					</execution>
+					<execution>
+						<id>settings</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<arguments>run build</arguments>
+							<workingDirectory>src/main/front/settings</workingDirectory>
+							<environmentVariables>
+								<outDir>${project.build.directory}/generated-sources/js/org/apache/openmeetings/web/room/</outDir>
+							</environmentVariables>
+						</configuration>
+					</execution>
+					<execution>
+						<id>room-install</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<workingDirectory>src/main/front/room</workingDirectory>
+						</configuration>
+					</execution>
+					<execution>
+						<id>room</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<arguments>run build</arguments>
+							<workingDirectory>src/main/front/room</workingDirectory>
+							<environmentVariables>
+								<outDir>${project.build.directory}/generated-sources/js/org/apache/openmeetings/web/room/</outDir>
+							</environmentVariables>
+						</configuration>
+					</execution>
+					<execution>
+						<id>wb-install</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<workingDirectory>src/main/front/wb</workingDirectory>
+						</configuration>
+					</execution>
+					<execution>
+						<id>wb</id>
+						<goals><goal>npm</goal></goals>
+						<configuration>
+							<arguments>run build</arguments>
+							<workingDirectory>src/main/front/wb</workingDirectory>
+							<environmentVariables>
+								<outDir>${project.build.directory}/generated-sources/js/org/apache/openmeetings/web/room/wb/</outDir>
+							</environmentVariables>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
 				<groupId>com.samaxes.maven</groupId>
 				<artifactId>minify-maven-plugin</artifactId>
 				<version>${minify-maven-plugin.version}</version>
+				<dependencies>
+					<dependency>
+						<groupId>com.google.javascript</groupId>
+						<artifactId>closure-compiler</artifactId>
+						<version>v20170521</version>
+					</dependency>
+				</dependencies>
 				<executions>
 					<execution>
 						<id>theme-minify</id>
@@ -102,125 +217,10 @@
 								<cssSourceFile>raw-room.css</cssSourceFile>
 								<cssSourceFile>raw-tree.css</cssSourceFile>
 								<cssSourceFile>raw-wb.css</cssSourceFile>
+								<cssSourceFile>raw-responsive.css</cssSourceFile>
 							</cssSourceFiles>
 							<skipMinify>true</skipMinify>
 							<cssFinalFile>theme.css</cssFinalFile>
-						</configuration>
-					</execution>
-					<execution>
-						<id>interview-wb-js</id>
-						<goals>
-							<goal>minify</goal>
-						</goals>
-						<configuration>
-							<charset>UTF-8</charset>
-							<jsSourceDir>../java/org/apache/openmeetings/web/room/wb</jsSourceDir>
-							<jsSourceFiles>
-								<jsSourceFile>raw-wb-area-base.js</jsSourceFile>
-								<jsSourceFile>raw-interview-area.js</jsSourceFile>
-							</jsSourceFiles>
-							<jsFinalFile>interviewwb.js</jsFinalFile>
-							<jsTargetDir>../generated-sources/main/java/org/apache/openmeetings/web/room/wb/</jsTargetDir>
-							<jsEngine>CLOSURE</jsEngine>
-						</configuration>
-					</execution>
-					<execution>
-						<id>wb-js</id>
-						<goals>
-							<goal>minify</goal>
-						</goals>
-						<configuration>
-							<charset>UTF-8</charset>
-							<jsSourceDir>../java/org/apache/openmeetings/web/room/wb</jsSourceDir>
-							<jsSourceFiles>
-								<jsSourceFile>fabric.js</jsSourceFile>
-								<jsSourceFile>MathJax-config.js</jsSourceFile>
-								<jsSourceFile>MathJax.js</jsSourceFile>
-								<jsSourceFile>raw-wb-area-base.js</jsSourceFile>
-								<jsSourceFile>raw-tool-util.js</jsSourceFile>
-								<jsSourceFile>raw-player.js</jsSourceFile>
-								<jsSourceFile>raw-tool-base.js</jsSourceFile>
-								<jsSourceFile>raw-tool-pointer.js</jsSourceFile>
-								<jsSourceFile>raw-tool-apointer.js</jsSourceFile>
-								<jsSourceFile>raw-tool-shape-base.js</jsSourceFile>
-								<jsSourceFile>raw-tool-text.js</jsSourceFile>
-								<jsSourceFile>raw-tool-whiteout.js</jsSourceFile>
-								<jsSourceFile>raw-tool-textbox.js</jsSourceFile>
-								<jsSourceFile>raw-tool-math.js</jsSourceFile>
-								<jsSourceFile>raw-tool-paint.js</jsSourceFile>
-								<jsSourceFile>raw-tool-shape.js</jsSourceFile>
-								<jsSourceFile>raw-tool-line.js</jsSourceFile>
-								<jsSourceFile>raw-tool-uline.js</jsSourceFile>
-								<jsSourceFile>raw-tool-rect.js</jsSourceFile>
-								<jsSourceFile>raw-tool-ellipse.js</jsSourceFile>
-								<jsSourceFile>raw-tool-arrow.js</jsSourceFile>
-								<jsSourceFile>raw-tool-clipart.js</jsSourceFile>
-								<jsSourceFile>raw-wb-board.js</jsSourceFile>
-								<jsSourceFile>raw-wb-area.js</jsSourceFile>
-							</jsSourceFiles>
-							<jsFinalFile>wb.js</jsFinalFile>
-							<jsTargetDir>../generated-sources/main/java/org/apache/openmeetings/web/room/wb/</jsTargetDir>
-							<jsEngine>CLOSURE</jsEngine>
-						</configuration>
-					</execution>
-					<execution>
-						<id>fileinput-js</id>
-						<goals>
-							<goal>minify</goal>
-						</goals>
-						<configuration>
-							<charset>UTF-8</charset>
-							<jsSourceDir>../java/org/apache/openmeetings/web/util/upload</jsSourceDir>
-							<jsSourceFiles>
-								<jsSourceFile>fileinput.js</jsSourceFile>
-							</jsSourceFiles>
-							<jsFinalFile>omfileinput.js</jsFinalFile>
-							<jsTargetDir>../generated-sources/main/java/org/apache/openmeetings/web/util/upload</jsTargetDir>
-							<jsEngine>CLOSURE</jsEngine>
-							<cssSourceDir>../java/org/apache/openmeetings/web/util/upload</cssSourceDir>
-							<cssSourceFiles>
-								<cssSourceFile>fileinput.css</cssSourceFile>
-							</cssSourceFiles>
-							<cssFinalFile>omfileinput.css</cssFinalFile>
-							<cssTargetDir>../generated-sources/main/java/org/apache/openmeetings/web/util/upload</cssTargetDir>
-						</configuration>
-					</execution>
-					<execution>
-						<id>room-js</id>
-						<goals>
-							<goal>minify</goal>
-						</goals>
-						<configuration>
-							<charset>UTF-8</charset>
-							<jsSourceDir>../java/org/apache/openmeetings/web/room</jsSourceDir>
-							<jsSourceFiles>
-								<jsSourceFile>jquery.dialogextend.js</jsSourceFile>
-								<jsSourceFile>raw-video.js</jsSourceFile>
-								<jsSourceFile>raw-video-manager.js</jsSourceFile>
-								<jsSourceFile>raw-sharer.js</jsSourceFile>
-								<jsSourceFile>raw-room.js</jsSourceFile>
-							</jsSourceFiles>
-							<jsFinalFile>room.js</jsFinalFile>
-							<jsEngine>CLOSURE</jsEngine>
-							<jsTargetDir>../generated-sources/main/java/org/apache/openmeetings/web/room</jsTargetDir>
-						</configuration>
-					</execution>
-					<execution>
-						<id>settings-js</id>
-						<goals>
-							<goal>minify</goal>
-						</goals>
-						<configuration>
-							<charset>UTF-8</charset>
-							<jsSourceDir>../java/org/apache/openmeetings/web/room</jsSourceDir>
-							<jsSourceFiles>
-								<jsSourceFile>raw-video-util.js</jsSourceFile>
-								<jsSourceFile>raw-settings.js</jsSourceFile>
-								<jsSourceFile>kurento-utils.js</jsSourceFile>
-							</jsSourceFiles>
-							<jsFinalFile>settings.js</jsFinalFile>
-							<jsEngine>CLOSURE</jsEngine>
-							<jsTargetDir>../generated-sources/main/java/org/apache/openmeetings/web/room</jsTargetDir>
 						</configuration>
 					</execution>
 					<execution>
@@ -233,28 +233,10 @@
 							<jsSourceDir>../java/org/apache/openmeetings/web/room</jsSourceDir>
 							<jsSourceFiles>
 								<jsSourceFile>raw-nettest.js</jsSourceFile>
-								<jsSourceFile>network.js</jsSourceFile>
 							</jsSourceFiles>
 							<jsFinalFile>nettest.js</jsFinalFile>
 							<jsEngine>CLOSURE</jsEngine>
-							<jsTargetDir>../generated-sources/main/java/org/apache/openmeetings/web/room</jsTargetDir>
-						</configuration>
-					</execution>
-					<execution>
-						<id>chat-js</id>
-						<goals>
-							<goal>minify</goal>
-						</goals>
-						<configuration>
-							<charset>UTF-8</charset>
-							<jsSourceDir>../java/org/apache/openmeetings/web/user/chat</jsSourceDir>
-							<jsSourceFiles>
-								<jsSourceFile>raw-cssemoticons.js</jsSourceFile>
-								<jsSourceFile>raw-chat.js</jsSourceFile>
-							</jsSourceFiles>
-							<jsFinalFile>chat.js</jsFinalFile>
-							<jsEngine>CLOSURE</jsEngine>
-							<jsTargetDir>../generated-sources/main/java/org/apache/openmeetings/web/user/chat</jsTargetDir>
+							<jsTargetDir>../generated-sources/js/org/apache/openmeetings/web/room</jsTargetDir>
 						</configuration>
 					</execution>
 				</executions>
@@ -268,24 +250,10 @@
 						**/*.class,
 						**/raw-*.css,
 						**/raw-*.js,
-						**/fabric.js,
-						**/MathJax*.js,
-						**/fileinput.js,
-						**/fileinput.css,
-						**/jquery.dialogextend.js,
-						**/kurento-utils.js,
-						**/network.js
 					</packagingExcludes>
 					<warSourceExcludes>
 						**/raw-*.css,
 						**/raw-*.js,
-						**/fabric.js,
-						**/MathJax*.js,
-						**/fileinput.js,
-						**/fileinput.css,
-						**/jquery.dialogextend.js,
-						**/kurento-utils.js,
-						**/network.js
 					</warSourceExcludes>
 					<filteringDeploymentDescriptors>true</filteringDeploymentDescriptors>
 					<webResources>
@@ -299,6 +267,9 @@
 								<include>**/*.xml</include>
 								<include>**/*.properties</include>
 							</includes>
+							<excludes>
+								<exclude>**/raw-*.js</exclude>
+							</excludes>
 						</webResource>
 						<webResource>
 							<directory>${project.parent.basedir}/openmeetings-service/src/main/java</directory>
@@ -317,7 +288,7 @@
 							<filtering>true</filtering>
 						</webResource>
 						<webResource>
-							<directory>${project.build.directory}/generated-sources/main/java/</directory>
+							<directory>${project.build.directory}/generated-sources/js/</directory>
 							<targetPath>WEB-INF/classes</targetPath>
 						</webResource>
 					</webResources>
@@ -409,13 +380,6 @@
 									<excludes>
 										<exclude>**/raw-*.css</exclude>
 										<exclude>**/raw-*.js</exclude>
-										<exclude>**/fabric.js</exclude>
-										<exclude>**/MathJax*.js</exclude>
-										<exclude>**/fileinput.js</exclude>
-										<exclude>**/fileinput.css</exclude>
-										<exclude>**/jquery.dialogextend.js</exclude>
-										<exclude>**/kurento-utils.js</exclude>
-										<exclude>**/network.js</exclude>
 									</excludes>
 									<filtering>true</filtering>
 								</resource>
@@ -444,13 +408,6 @@
 									<excludes>
 										<exclude>**/raw-*.css</exclude>
 										<exclude>**/raw-*.js</exclude>
-										<exclude>**/fabric.js</exclude>
-										<exclude>**/MathJax*.js</exclude>
-										<exclude>**/fileinput.js</exclude>
-										<exclude>**/fileinput.css</exclude>
-										<exclude>**/jquery.dialogextend.js</exclude>
-										<exclude>**/kurento-utils.js</exclude>
-										<exclude>**/network.js</exclude>
 									</excludes>
 								</resource>
 								<resource>
@@ -544,6 +501,7 @@
 						</systemProperties>
 						<webApp>
 							<contextPath>/openmeetings</contextPath>
+							<descriptor>${project.basedir}/src/test/jetty/web.xml</descriptor>
 						</webApp>
 						<jettyXml>${project.basedir}/src/test/jetty/jetty.xml,${project.basedir}/src/test/jetty/jetty-ssl.xml,${project.basedir}/src/test/jetty/jetty-http.xml,${project.basedir}/src/test/jetty/jetty-https.xml</jettyXml>
 					</configuration>
@@ -577,6 +535,17 @@
 			<artifactId>openmeetings-webservice</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>jasny-bootstrap</artifactId>
+			<version>${jasny-bootstrap.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.webjars</groupId>
+					<artifactId>bootstrap</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-core</artifactId>
 		</dependency>
@@ -587,7 +556,7 @@
 		<dependency>
 			<groupId>org.wicketstuff</groupId>
 			<artifactId>wicketstuff-dashboard-core</artifactId>
-			<version>${wickets.version}</version>
+			<version>${wicketstuff.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.wicket</groupId>
@@ -607,37 +576,37 @@
 		<dependency>
 			<groupId>com.googlecode.wicket-jquery-ui</groupId>
 			<artifactId>wicket-jquery-ui-core</artifactId>
-			<version>${wicketju.version}</version>
+			<version>${wicket-jquery-ui.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.googlecode.wicket-jquery-ui</groupId>
 			<artifactId>wicket-jquery-ui</artifactId>
-			<version>${wicketju.version}</version>
+			<version>${wicket-jquery-ui.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.googlecode.wicket-jquery-ui</groupId>
 			<artifactId>wicket-jquery-ui-calendar</artifactId>
-			<version>${wicketju.version}</version>
+			<version>${wicket-jquery-ui.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.googlecode.wicket-jquery-ui</groupId>
 			<artifactId>wicket-jquery-ui-plugins</artifactId>
-			<version>${wicketju.version}</version>
+			<version>${wicket-jquery-ui.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.wicketstuff</groupId>
 			<artifactId>wicketstuff-urlfragment</artifactId>
-			<version>${wickets.version}</version>
+			<version>${wicketstuff.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.wicketstuff</groupId>
 			<artifactId>wicketstuff-select2</artifactId>
-			<version>${wickets.version}</version>
+			<version>${wicketstuff.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.wicketstuff</groupId>
 			<artifactId>jqplot</artifactId>
-			<version>${wickets.version}</version>
+			<version>${wicketstuff.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>de.agilecoders.wicket</groupId>
@@ -652,11 +621,24 @@
 		<dependency>
 			<groupId>org.webjars</groupId>
 			<artifactId>font-awesome</artifactId>
-			<version>5.12.0</version>
+			<version>${font-awesome.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.prometheus</groupId>
+			<artifactId>simpleclient_servlet</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.tomcat</groupId>
+			<artifactId>tomcat-catalina</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.webjars</groupId>
+			<artifactId>jquery-ui-touch-punch</artifactId>
+			<version>0.2.3-2</version>
 		</dependency>
 		<!-- Test dependencies -->
 		<dependency>
@@ -702,12 +684,17 @@
 		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>
-			<artifactId>mockito-core</artifactId>
+			<artifactId>mockito-inline</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>
 			<artifactId>mockito-junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-params</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

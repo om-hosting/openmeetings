@@ -26,7 +26,7 @@ import static org.apache.openmeetings.web.app.WebSession.getDateFormat;
 import static org.apache.openmeetings.web.app.WebSession.getRights;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
 import static org.apache.openmeetings.web.common.BasePanel.EVT_CLICK;
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelDangerConfirm;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelDangerConfirm;
 import static org.apache.openmeetings.web.room.RoomPanel.isModerator;
 
 import java.util.List;
@@ -38,7 +38,6 @@ import org.apache.openmeetings.db.dao.basic.ChatDao;
 import org.apache.openmeetings.db.entity.basic.ChatMessage;
 import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.web.app.ClientManager;
-import org.apache.openmeetings.web.pages.BasePage;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxEventBehavior;
@@ -180,8 +179,7 @@ public class ChatToolbar extends Panel implements IWysiwygToolbar {
 	@Override
 	protected void onInitialize() {
 		super.onInitialize();
-		BasePage page = (BasePage)getPage();
-		add(toolbar.add(new WebMarkupContainer("hyperlink").add(AttributeModifier.append("class", page.isRtl() ? "dropdown-menu-left" : "dropdown-menu-right"))));
+		add(toolbar);
 		add(download);
 		delBtn = new AjaxButton("delete", chatForm) {
 			private static final long serialVersionUID = 1L;
@@ -215,14 +213,7 @@ public class ChatToolbar extends Panel implements IWysiwygToolbar {
 		toolbar.add(delBtn.setVisible(hasAdminLevel(getRights())).setOutputMarkupId(true)
 				.setOutputMarkupPlaceholderTag(true));
 		toolbar.add(save.setVisible(hasAdminLevel(getRights())).setOutputMarkupId(true)
-				.setOutputMarkupPlaceholderTag(true).add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						download.initiate(target);
-					}
-				}));
+				.setOutputMarkupPlaceholderTag(true).add(AjaxEventBehavior.onEvent(EVT_CLICK, download::initiate)));
 	}
 
 	private static JSONObject cleanMsg(String scope) {

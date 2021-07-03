@@ -20,9 +20,9 @@ package org.apache.openmeetings.web.pages.auth;
 
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_DEFAULT_LDAP_ID;
 import static org.apache.openmeetings.web.app.Application.getAuthenticationStrategy;
+import static org.apache.openmeetings.web.app.UserManager.showAuth;
 import static org.apache.openmeetings.web.pages.HashPage.APP;
 import static org.apache.openmeetings.web.pages.HashPage.APP_TYPE_NETWORK;
-import static org.apache.openmeetings.web.pages.auth.SignInPage.showAuth;
 
 import java.util.List;
 
@@ -33,11 +33,13 @@ import org.apache.openmeetings.db.entity.server.LdapConfig;
 import org.apache.openmeetings.db.entity.server.OAuthServer;
 import org.apache.openmeetings.db.entity.user.User.Type;
 import org.apache.openmeetings.util.OmException;
+import org.apache.openmeetings.util.OpenmeetingsVariables;
 import org.apache.openmeetings.web.app.Application;
 import org.apache.openmeetings.web.app.OmAuthenticationStrategy;
 import org.apache.openmeetings.web.app.WebSession;
 import org.apache.openmeetings.web.common.OmAjaxClientInfoBehavior;
 import org.apache.openmeetings.web.pages.HashPage;
+import org.apache.openmeetings.web.pages.PrivacyPage;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.RestartResponseException;
@@ -54,6 +56,7 @@ import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.PasswordTextField;
 import org.apache.wicket.markup.html.form.RequiredTextField;
 import org.apache.wicket.markup.html.form.StatelessForm;
+import org.apache.wicket.markup.html.link.BookmarkablePageLink;
 import org.apache.wicket.markup.html.list.ListItem;
 import org.apache.wicket.markup.html.list.ListView;
 import org.apache.wicket.model.Model;
@@ -65,8 +68,6 @@ import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.apache.wicket.util.string.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.googlecode.wicket.jquery.ui.effect.JQueryEffectBehavior;
 
 import de.agilecoders.wicket.core.markup.html.bootstrap.button.BootstrapAjaxLink;
 import de.agilecoders.wicket.core.markup.html.bootstrap.button.Buttons;
@@ -105,7 +106,8 @@ public class SignInDialog extends Modal<String> {
 		show(true);
 		setCloseOnEscapeKey(false);
 		setBackdrop(Backdrop.STATIC);
-		addButton(new BootstrapAjaxLink<>("button", Model.of(""), Buttons.Type.Outline_Secondary, new ResourceModel("123")) {
+		addButton(new SpinnerAjaxButton(BUTTON_MARKUP_ID, new ResourceModel("112"), form, Buttons.Type.Outline_Primary)); // Login
+		addButton(new BootstrapAjaxLink<>(BUTTON_MARKUP_ID, Model.of(""), Buttons.Type.Outline_Secondary, new ResourceModel("123")) {
 			private static final long serialVersionUID = 1L;
 
 			public void onClick(AjaxRequestTarget target) {
@@ -113,8 +115,7 @@ public class SignInDialog extends Modal<String> {
 				register.setClientTimeZone();
 				register.show(target);
 			}
-		});
-		addButton(new SpinnerAjaxButton("button", new ResourceModel("112"), form, Buttons.Type.Outline_Primary)); // Login
+		}.setVisible(OpenmeetingsVariables.isAllowRegisterFrontend()));
 
 		super.onInitialize();
 	}
@@ -130,10 +131,6 @@ public class SignInDialog extends Modal<String> {
 
 	public void setForgetPasswordDialog(ForgetPasswordDialog f) {
 		this.f = f;
-	}
-
-	private void shake(AjaxRequestTarget target) {
-		target.appendJavaScript(JQueryEffectBehavior.toString("#" + getMarkupId(), "shake"));
 	}
 
 	class SignInForm extends StatelessForm<String> {
@@ -159,9 +156,9 @@ public class SignInDialog extends Modal<String> {
 			int selectedLdap = cfgDao.getInt(CONFIG_DEFAULT_LDAP_ID, 0);
 			domain = ldaps.get(selectedLdap < ldaps.size() && selectedLdap > 0 ? selectedLdap : 0);
 			credentials.add(new WebMarkupContainer("ldap")
-				.add(new DropDownChoice<>("domain", new PropertyModel<LdapConfig>(SignInDialog.this, "domain")
-						, ldaps, new ChoiceRenderer<LdapConfig>("name", "id"))).setVisible(showLdap));
-			credentials.add(new CheckBox("rememberMe", new PropertyModel<Boolean>(SignInDialog.this, "rememberMe")).setOutputMarkupId(true));
+				.add(new DropDownChoice<>("domain", new PropertyModel<>(SignInDialog.this, "domain")
+						, ldaps, new ChoiceRenderer<>("name", "id"))).setVisible(showLdap));
+			credentials.add(new CheckBox("rememberMe", new PropertyModel<>(SignInDialog.this, "rememberMe")).setOutputMarkupId(true));
 			AjaxButton ab = new AjaxButton("submit") { //FAKE button so "submit-on-enter" works as expected
 				private static final long serialVersionUID = 1L;
 			};
@@ -178,6 +175,7 @@ public class SignInDialog extends Modal<String> {
 			});
 			add(new WebMarkupContainer("netTest").add(AttributeModifier.append("href"
 					, RequestCycle.get().urlFor(HashPage.class, new PageParameters().add(APP, APP_TYPE_NETWORK)).toString())));
+			add(new BookmarkablePageLink<>("privacy", PrivacyPage.class));
 			final boolean showOauth = ((SignInPage)getPage()).allowOAuthLogin();
 			add(new WebMarkupContainer("oauth").add(
 				new ListView<>("oauthList", oauthDao.getActive()) {
@@ -235,7 +233,7 @@ public class SignInDialog extends Modal<String> {
 		}
 
 		protected void onError(AjaxRequestTarget target) {
-			shake(target);
+			target.add(feedback);
 		}
 
 		@Override
@@ -258,7 +256,7 @@ public class SignInDialog extends Modal<String> {
 				target.add(feedback);
 			}
 			if (signIn) {
-	 			setResponsePage(Application.get().getHomePage());
+				setResponsePage(Application.get().getHomePage());
 				if (rememberMe) {
 					strategy.save(login, password, type, domain.getId());
 				} else {
@@ -274,9 +272,9 @@ public class SignInDialog extends Modal<String> {
 					Thread.sleep(6 + (long)(10 * Math.random() * 1000));
 				} catch (InterruptedException e) {
 					log.error("Unexpected exception while sleeping", e);
+					Thread.currentThread().interrupt();
 				}
 				strategy.remove();
-				shake(target);
 			}
 		}
 	}

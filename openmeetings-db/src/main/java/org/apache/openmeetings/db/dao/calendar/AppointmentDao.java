@@ -18,6 +18,7 @@
  */
 package org.apache.openmeetings.db.dao.calendar;
 
+import static java.util.UUID.randomUUID;
 import static org.apache.openmeetings.db.util.DaoHelper.UNSUPPORTED;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CALENDAR_ROOM_CAPACITY;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.PARAM_USER_ID;
@@ -25,7 +26,6 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.PARAM_USER_ID;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -34,15 +34,17 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.openmeetings.db.dao.IDataProviderDao;
 import org.apache.openmeetings.db.dao.basic.ConfigurationDao;
-import org.apache.openmeetings.db.dao.room.IInvitationManager;
 import org.apache.openmeetings.db.dao.room.RoomDao;
+import org.apache.openmeetings.db.dto.calendar.AppointmentDTO;
 import org.apache.openmeetings.db.entity.calendar.Appointment;
 import org.apache.openmeetings.db.entity.calendar.Appointment.Reminder;
 import org.apache.openmeetings.db.entity.calendar.MeetingMember;
 import org.apache.openmeetings.db.entity.room.Invitation.MessageType;
 import org.apache.openmeetings.db.entity.room.Room;
+import org.apache.openmeetings.db.manager.IInvitationManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,16 +101,30 @@ public class AppointmentDao implements IDataProviderDao<Appointment>{
 			r.setCapacity(cfgDao.getLong(CONFIG_CALENDAR_ROOM_CAPACITY, 50L));
 		}
 		a.setRoom(roomDao.update(r, userId));
+		final boolean newApp = a.getId() == null;
+		AppointmentDTO a0 = null;
+		Set<Long> mmIds = Set.of();
+		if (sendmails && !newApp) {
+			Appointment prev = get(a.getId());
+			if (prev != null) {
+				a0 = new AppointmentDTO(prev);
+			}
+			mmIds = meetingMemberDao.getMeetingMemberIdsByAppointment(a.getId());
+		}
+		if (newApp) {
+			a.setIcalId(randomUUID().toString());
+			em.persist(a);
+		} else {
+			a = em.merge(a);
+		}
 		if (sendmails) {
-			Set<Long> mmIds = a.getId() == null ? new HashSet<>()
-					: meetingMemberDao.getMeetingMemberIdsByAppointment(a.getId());
 			// update meeting members
-			Appointment a0 = a.getId() == null ? null : get(a.getId());
-			boolean sendMail = a0 == null || !a0.getTitle().equals(a.getTitle()) ||
-					!(a0.getDescription() != null ? a0.getDescription().equals(a.getDescription()) : true) ||
-					!(a0.getLocation() != null ? a0.getLocation().equals(a.getLocation()) : true) ||
-					!a0.getStart().equals(a.getStart()) ||
-					!a0.getEnd().equals(a.getEnd());
+			boolean sendMail = a0 == null
+					|| !StringUtils.equals(a0.getTitle(), a.getTitle())
+					|| !StringUtils.equals(a0.getDescription(), a.getDescription())
+					|| !StringUtils.equals(a0.getLocation(), a.getLocation())
+					|| !a0.getStart().getTime().equals(a.getStart())
+					|| !a0.getEnd().getTime().equals(a.getEnd());
 			List<MeetingMember> mmList = a.getMeetingMembers();
 			if (mmList != null){
 				for (MeetingMember mm : mmList) {
@@ -126,20 +142,13 @@ public class AppointmentDao implements IDataProviderDao<Appointment>{
 			//notify owner
 			MeetingMember owner = new MeetingMember();
 			owner.setUser(a.getOwner());
-			if (a.getId() == null) {
+			if (newApp) {
 				invitationManager.processInvitation(a, owner, MessageType.CREATE);
 			} else if (a.isDeleted()) {
 				invitationManager.processInvitation(a, owner, MessageType.CANCEL);
 			} else if (sendMail) {
 				invitationManager.processInvitation(a, owner, MessageType.UPDATE, sendMail);
 			}
-		}
-		if (a.getId() == null) {
-			a.setInserted(new Date());
-			em.persist(a);
-		} else {
-			a.setUpdated(new Date());
-			a = em.merge(a);
 		}
 		return a;
 	}
@@ -151,7 +160,6 @@ public class AppointmentDao implements IDataProviderDao<Appointment>{
 		if (a == null || a.getId() == null) {
 			return;
 		}
-		a.setUpdated(new Date());
 		a.setDeleted(true);
 		a.setMeetingMembers(null);
 		if (a.getRoom().isAppointment()) {

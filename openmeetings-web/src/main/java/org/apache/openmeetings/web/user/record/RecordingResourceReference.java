@@ -21,26 +21,20 @@ package org.apache.openmeetings.web.user.record;
 import static org.apache.openmeetings.web.app.WebSession.getRecordingId;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
 
-import java.util.Map.Entry;
-
 import org.apache.openmeetings.db.dao.record.RecordingDao;
 import org.apache.openmeetings.db.dao.user.GroupUserDao;
 import org.apache.openmeetings.db.dao.user.UserDao;
-import org.apache.openmeetings.db.dto.room.Whiteboard;
-import org.apache.openmeetings.db.dto.room.Whiteboards;
 import org.apache.openmeetings.db.entity.basic.Client;
 import org.apache.openmeetings.db.entity.file.BaseFileItem.Type;
 import org.apache.openmeetings.db.entity.record.Recording;
 import org.apache.openmeetings.web.app.ClientManager;
 import org.apache.openmeetings.web.app.WebSession;
-import org.apache.openmeetings.web.app.WhiteboardManager;
 import org.apache.openmeetings.web.util.FileItemResourceReference;
 import org.apache.wicket.injection.Injector;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.request.resource.IResource.Attributes;
 import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.apache.wicket.util.string.StringValue;
-import org.apache.wicket.util.string.Strings;
 
 public abstract class RecordingResourceReference extends FileItemResourceReference<Recording> {
 	private static final long serialVersionUID = 1L;
@@ -49,13 +43,11 @@ public abstract class RecordingResourceReference extends FileItemResourceReferen
 	@SpringBean
 	private ClientManager cm;
 	@SpringBean
-	private WhiteboardManager wbm;
-	@SpringBean
 	private GroupUserDao groupUserDao;
 	@SpringBean
 	private UserDao userDao;
 
-	public RecordingResourceReference(String name) {
+	protected RecordingResourceReference(String name) {
 		super(name);
 		Injector.get().inject(this);
 	}
@@ -70,26 +62,27 @@ public abstract class RecordingResourceReference extends FileItemResourceReferen
 	@Override
 	protected Recording getFileItem(Attributes attributes) {
 		PageParameters params = attributes.getParameters();
-		StringValue _id = params.get("id");
+		StringValue inId = params.get("id");
 		String ruid = params.get("ruid").toString();
 		String uid = params.get("uid").toString();
+		String wbItemId = params.get("wuid").toString();
 		Long id = null;
 		try {
-			id = _id.toOptionalLong();
+			id = inId.toOptionalLong();
 		} catch (Exception e) {
 			//no-op expected
 		}
 		WebSession ws = WebSession.get();
-		if (id == null && ws.signIn(_id.toString(), true)) {
+		if (id == null && ws.signIn(inId.toString(), true)) {
 			id = getRecordingId();
 		}
 		if (id != null && ws.isSignedIn()) {
-			return getRecording(id, ruid, uid);
+			return getRecording(id, ruid, uid, wbItemId);
 		}
 		return null;
 	}
 
-	private Recording getRecording(Long id, String ruid, String uid) {
+	private Recording getRecording(Long id, String ruid, String uid, String wbItemId) {
 		log.debug("Recording with id {} is requested", id);
 		Recording r = recDao.get(id);
 		if (r == null || r.getType() == Type.FOLDER || r.isDeleted()) {
@@ -99,15 +92,8 @@ public abstract class RecordingResourceReference extends FileItemResourceReferen
 			return r;
 		}
 		Client c = cm.get(uid);
-		if (c != null && c.getRoom() != null) {
-			Whiteboards wbs = wbm.get(c.getRoom().getId());
-			if (wbs != null && !Strings.isEmpty(ruid) && ruid.equals(wbs.getUid())) {
-				for (Entry<Long, Whiteboard> e : wbs.getWhiteboards().entrySet()) {
-					if (e.getValue().contains(r.getHash())) {
-						return r; // item IS on WB
-					}
-				}
-			}
+		if (isAtWb(c, ruid, wbItemId, r.getId())) {
+			return r; // item IS on WB
 		}
 		if (r.getOwnerId() == null && r.getGroupId() == null) {
 			//public

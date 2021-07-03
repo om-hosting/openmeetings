@@ -28,7 +28,7 @@ import org.apache.openmeetings.db.dto.room.RoomDTO;
 import org.apache.openmeetings.db.entity.room.Room;
 import org.junit.jupiter.api.Test;
 
-public class TestWbService extends AbstractWebServiceTest {
+class TestWbService extends AbstractWebServiceTest {
 	private static final long CAPACITY = 666L;
 	private static final String WB_SERVICE_MOUNT = "wb";
 
@@ -62,7 +62,7 @@ public class TestWbService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testReset() {
+	void testReset() {
 		doTest((room, sid) -> {
 			ServiceResult res = getClient(getWbUrl())
 					.path("/resetwb/" + room.getId())
@@ -73,7 +73,7 @@ public class TestWbService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCleanAll() {
+	void testCleanAll() {
 		doTest((room, sid) -> {
 			ServiceResult res = getClient(getWbUrl())
 					.path("/cleanwb/" + room.getId() + "/" + 0)
@@ -84,7 +84,7 @@ public class TestWbService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCleanSlide() {
+	void testCleanSlide() {
 		doTest((room, sid) -> {
 			ServiceResult res = getClient(getWbUrl())
 					.path("/cleanslide/" + room.getId() + "/" + 0 + "/" + 0)

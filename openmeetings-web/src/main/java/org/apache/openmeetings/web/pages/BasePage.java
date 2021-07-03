@@ -22,8 +22,10 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.getApplicationN
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getGaCode;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.isInitComplete;
 import static org.apache.openmeetings.web.app.Application.isInstalled;
+import static org.apache.wicket.RuntimeConfigurationType.DEVELOPMENT;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.openmeetings.web.app.Application;
@@ -34,6 +36,7 @@ import org.apache.openmeetings.web.util.OmUrlFragment.AreaKeys;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.RestartResponseException;
 import org.apache.wicket.markup.head.CssHeaderItem;
+import org.apache.wicket.markup.head.HeaderItem;
 import org.apache.wicket.markup.head.IHeaderResponse;
 import org.apache.wicket.markup.head.JavaScriptHeaderItem;
 import org.apache.wicket.markup.head.OnDomReadyHeaderItem;
@@ -68,7 +71,7 @@ public abstract class BasePage extends AsyncUrlFragmentAwarePage {
 		}
 	};
 
-	public BasePage() {
+	protected BasePage() {
 		if (isInitComplete()) {
 			if (!isInstalled() && ! (this instanceof InstallWizardPage)) {
 				throw new RestartResponseException(InstallWizardPage.class);
@@ -93,7 +96,7 @@ public abstract class BasePage extends AsyncUrlFragmentAwarePage {
 		add(new Label("pageTitle", appName));
 		add(header = new HeaderPanel("header", appName));
 		add(loader.setVisible(isMainPage()).setOutputMarkupPlaceholderTag(true).setOutputMarkupId(true));
-		add(new HeaderResponseContainer("customCSS", CUSTOM_CSS_FILTER));
+		add(new HeaderResponseContainer(CUSTOM_CSS_FILTER, CUSTOM_CSS_FILTER));
 	}
 
 	public abstract boolean isRtl();
@@ -125,11 +128,20 @@ public abstract class BasePage extends AsyncUrlFragmentAwarePage {
 	protected void internalRenderHead(IHeaderResponse response) {
 		response.render(new PriorityHeaderItem(JavaScriptHeaderItem.forReference(Application.get().getJavaScriptLibrarySettings().getJQueryReference())));
 		super.renderHead(response);
+		final String suffix = DEVELOPMENT == getApplication().getConfigurationType() ? "" : ".min";
+		response.render(CssHeaderItem.forUrl(String.format("css/theme_om/jquery-ui%s.css", suffix)));
 		response.render(CssHeaderItem.forUrl("css/theme.css"));
 		if (!Strings.isEmpty(getGaCode())) {
-			response.render(new PriorityHeaderItem(JavaScriptHeaderItem.forReference(new JavaScriptResourceReference(BasePage.class, "om-ga.js"))));
-			StringBuilder script = new StringBuilder("initGA('");
-			script.append(getGaCode()).append("');").append(isMainPage() ? "initHash()" : "init()").append(';');
+			response.render(new PriorityHeaderItem(JavaScriptHeaderItem.forReference(new JavaScriptResourceReference(BasePage.class, "om-ga.js") {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+				public List<HeaderItem> getDependencies() {
+					return List.of(new PriorityHeaderItem(JavaScriptHeaderItem.forUrl("https://www.googletagmanager.com/gtag/js?id=" + getGaCode()).setAsync(true)));
+				}
+			})));
+			StringBuilder script = new StringBuilder("initGA('")
+					.append(getGaCode()).append("', ").append(isMainPage()).append(");");
 			response.render(OnDomReadyHeaderItem.forScript(script));
 		}
 		response.render(CssHeaderItem.forReference(FontAwesome5CssReference.instance()));

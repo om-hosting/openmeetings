@@ -23,6 +23,8 @@ import static org.apache.openmeetings.db.bind.Constants.FILE_NODE;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.NamedQuery;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
@@ -39,8 +41,8 @@ import org.apache.openmeetings.db.bind.adapter.LongAdapter;
 		+ "AND f.parentId = :parentId ORDER BY f.type ASC, f.name ")
 @NamedQuery(name = "getFilesFilteredByParent", query = "SELECT f FROM FileItem f WHERE f.deleted = false "
 		+ "AND f.parentId = :parentId AND f.type IN :filter ORDER BY f.type ASC, f.name ")
-@NamedQuery(name = "getFileExternal", query = "SELECT f FROM FileItem f WHERE f.deleted = false AND f.externalId = :externalId AND f.externalType LIKE :externalType")
-@NamedQuery(name = "getFileAllExternal", query = "SELECT f FROM FileItem f WHERE f.deleted = false AND f.externalType LIKE :externalType")
+@NamedQuery(name = "getFileExternal", query = "SELECT f FROM FileItem f WHERE f.deleted = false AND f.externalId = :externalId AND f.externalType = :externalType")
+@NamedQuery(name = "getFileAllExternal", query = "SELECT f FROM FileItem f WHERE f.deleted = false AND f.externalType = :externalType")
 @NamedQuery(name = "getFileByGroup", query = "SELECT f FROM FileItem f WHERE f.deleted = false AND f.ownerId IS NULL "
 		+ "AND f.groupId = :groupId AND f.parentId IS NULL "
 		+ "ORDER BY f.type ASC, f.name")
@@ -48,6 +50,7 @@ import org.apache.openmeetings.db.bind.adapter.LongAdapter;
 		+ "AND f.groupId = :groupId AND f.parentId IS NULL AND f.type IN :filter "
 		+ "ORDER BY f.type ASC, f.name")
 @XmlRootElement(name = FILE_NODE)
+@XmlAccessorType(XmlAccessType.FIELD)
 public class FileItem extends BaseFileItem {
 	private static final long serialVersionUID = 1L;
 
@@ -60,6 +63,11 @@ public class FileItem extends BaseFileItem {
 	@XmlElement(name = "externalId", required = false)
 	private String externalId;
 
+	/**
+	 * Method to get ID
+	 *
+	 * required to be overridden for valid export
+	 */
 	@Override
 	public Long getId() {
 		return super.getId();

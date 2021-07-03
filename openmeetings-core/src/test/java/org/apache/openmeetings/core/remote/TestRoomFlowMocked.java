@@ -19,39 +19,31 @@
  */
 package org.apache.openmeetings.core.remote;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import java.util.Locale;
-
-import org.apache.openmeetings.db.dao.label.LabelDao;
+import org.apache.openmeetings.IApplication;
 import org.apache.openmeetings.db.dao.record.RecordingDao;
 import org.apache.openmeetings.db.dao.room.RoomDao;
 import org.apache.openmeetings.db.dao.user.UserDao;
 import org.apache.openmeetings.db.entity.basic.Client;
-import org.apache.openmeetings.db.entity.label.OmLanguage;
 import org.apache.openmeetings.db.entity.record.Recording;
 import org.apache.openmeetings.db.entity.room.Room;
 import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.db.manager.IClientManager;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.kurento.client.MediaPipeline;
 import org.kurento.client.Transaction;
-import org.mockito.BDDMockito;
 import org.mockito.Mock;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
 
 import com.github.openjson.JSONObject;
 
-@PrepareForTest(LabelDao.class)
-public class TestRoomFlowMocked extends BaseMockedTest {
+class TestRoomFlowMocked extends BaseMockedTest {
 	private static final Long USER_ID = 1L;
 	private static final Long ROOM_ID = 5L;
 	@Mock
@@ -62,31 +54,33 @@ public class TestRoomFlowMocked extends BaseMockedTest {
 	private RecordingDao recDao;
 	@Mock
 	private IClientManager cm;
+	@Mock
+	private IApplication app;
 
 	@Override
+	@BeforeEach
 	public void setup() {
 		super.setup();
-		when(client.createMediaPipeline(any(Transaction.class))).thenReturn(mock(MediaPipeline.class));
+		lenient().doReturn(mock(MediaPipeline.class)).when(client).createMediaPipeline(any(Transaction.class));
 		User u = new User();
 		u.setId(USER_ID);
 		u.setFirstname("firstname");
 		u.setLastname("lastname");
-		when(userDao.get(USER_ID)).thenReturn(u);
+		lenient().doReturn(u).when(userDao).get(USER_ID);
 		doReturn(true).when(handler).isConnected();
-		when(recDao.update(any(Recording.class))).thenAnswer(new Answer<Recording>() {
-			@Override
-			public Recording answer(InvocationOnMock invocation) throws Throwable {
-				Object[] args = invocation.getArguments();
-				Recording r = (Recording) args[0];
-				r.setId(1L);
-				return r;
-			}
+		lenient().when(recDao.update(any(Recording.class))).thenAnswer((invocation) ->  {
+			Object[] args = invocation.getArguments();
+			Recording r = (Recording) args[0];
+			r.setId(1L);
+			return r;
 		});
 	}
 
 	@Test
-	public void testNoClient() {
-		handler.onMessage(null, MSG_BASE.put("id", "aa"));
+	void testNoClient() {
+		runWrapped(() -> {
+			handler.onMessage(null, MSG_BASE.put("id", "aa"));
+		});
 	}
 
 	private Client getClient() {
@@ -94,22 +88,26 @@ public class TestRoomFlowMocked extends BaseMockedTest {
 	}
 
 	@Test
-	public void testNoRoom() {
-		handler.onMessage(getClient(), MSG_BASE.put("id", "aa"));
+	void testNoRoom() {
+		runWrapped(() -> {
+			handler.onMessage(getClient(), MSG_BASE.put("id", "aa"));
+		});
 	}
 
 	@Test
-	public void testRecordingAllowed() {
-		Client c = getClient();
-		assertFalse(streamProcessor.recordingAllowed(c));
-		c.setRoom(new Room());
-		assertFalse(streamProcessor.recordingAllowed(c));
-		c.getRoom().setId(ROOM_ID);
-		c.getRoom().setAllowRecording(true);
-		assertFalse(streamProcessor.recordingAllowed(c));
-		c.allow(Room.Right.MODERATOR);
-		when(roomDao.get(ROOM_ID)).thenReturn(c.getRoom());
-		assertTrue(streamProcessor.recordingAllowed(c));
+	void testRecordingAllowed() {
+		runWrapped(() -> {
+			Client c = getClient();
+			assertFalse(streamProcessor.recordingAllowed(c));
+			c.setRoom(new Room());
+			assertFalse(streamProcessor.recordingAllowed(c));
+			c.getRoom().setId(ROOM_ID);
+			c.getRoom().setAllowRecording(true);
+			assertFalse(streamProcessor.recordingAllowed(c));
+			c.allow(Room.Right.MODERATOR);
+			doReturn(c.getRoom()).when(roomDao).get(ROOM_ID);
+			assertTrue(streamProcessor.recordingAllowed(c));
+		});
 	}
 
 	private Client getClientWithRoom() {
@@ -120,7 +118,7 @@ public class TestRoomFlowMocked extends BaseMockedTest {
 	}
 
 	@Test
-	public void testWannaRecord1() throws Exception {
+	void testWannaRecord1() throws Exception {
 		JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "wannaRecord");
 		handler.onMessage(getClientWithRoom(), msg);
 	}
@@ -133,29 +131,29 @@ public class TestRoomFlowMocked extends BaseMockedTest {
 	}
 
 	@Test
-	public void testWannaRecord2() throws Exception {
-		JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "wannaRecord");
-		Client c = getClientFull();
-		c.getRoom().setType(Room.Type.INTERVIEW);
-		when(roomDao.get(ROOM_ID)).thenReturn(c.getRoom());
-		handler.onMessage(c, msg);
+	void testWannaRecord2() throws Exception {
+		runWrapped(() -> {
+			JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "wannaRecord");
+			Client c = getClientFull();
+			c.getRoom().setType(Room.Type.INTERVIEW);
+			doReturn(c.getRoom()).when(roomDao).get(ROOM_ID);
+			handler.onMessage(c, msg);
+		});
 	}
 
 	@Test
-	public void testRecordRecord() throws Exception {
-		PowerMockito.mockStatic(LabelDao.class);
-		BDDMockito.given(LabelDao.getLanguage(any(Long.class))).willReturn(new OmLanguage(Locale.ENGLISH));
-		JSONObject msg = new JSONObject(MSG_BASE.toString())
-				.put("id", "wannaRecord")
-				.put("width", 640)
-				.put("height", 480)
-				.put("shareType", "shareType")
-				.put("fps", "fps")
-				;
-		Client c = getClientFull();
-		when(roomDao.get(ROOM_ID)).thenReturn(c.getRoom());
-		handler.onMessage(c, msg);
-		assertTrue(streamProcessor.isSharing(ROOM_ID));
-		handler.onMessage(c, msg);
+	void testRecordRecord() throws Exception {
+		runWrapped(() -> {
+			JSONObject msg = new JSONObject(MSG_BASE.toString())
+					.put("id", "wannaRecord")
+					.put("shareType", "shareType")
+					.put("fps", "fps")
+					;
+			Client c = getClientFull();
+			doReturn(c.getRoom()).when(roomDao).get(ROOM_ID);
+			handler.onMessage(c, msg);
+			assertTrue(streamProcessor.isSharing(ROOM_ID));
+			handler.onMessage(c, msg);
+		});
 	}
 }

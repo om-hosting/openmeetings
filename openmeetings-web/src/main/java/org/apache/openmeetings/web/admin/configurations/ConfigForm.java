@@ -18,6 +18,9 @@
  */
 package org.apache.openmeetings.web.admin.configurations;
 
+import static org.apache.openmeetings.web.common.BasePanel.EVT_CHANGE;
+import static org.apache.wicket.validation.validator.StringValidator.maximumLength;
+
 import java.util.List;
 
 import org.apache.openmeetings.db.dao.basic.ConfigurationDao;
@@ -135,14 +138,7 @@ public class ConfigForm extends AdminBaseForm<Configuration> {
 				}
 				return null;
 			}
-		}).setLabel(new ResourceModel("45")).add(new AjaxFormComponentUpdatingBehavior("change") {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			protected void onUpdate(AjaxRequestTarget target) {
-				update(target);
-			}
-		}));
+		}).setLabel(new ResourceModel("45")).add(AjaxFormComponentUpdatingBehavior.onUpdate(EVT_CHANGE, this::update)));
 		add(new RequiredTextField<String>("key").setLabel(new ResourceModel("265")).add(new IValidator<String>(){
 			private static final long serialVersionUID = 1L;
 
@@ -153,12 +149,14 @@ public class ConfigForm extends AdminBaseForm<Configuration> {
 					validatable.error(new ValidationError(getString("error.cfg.exist")));
 				}
 			}
-		}));
+		}).add(maximumLength(255)));
+		valueS.add(maximumLength(255));
 		stringBox.add(valueS.setLabel(new ResourceModel("271"))).setOutputMarkupId(true).setOutputMarkupPlaceholderTag(true);
 		numberBox.add(valueN.setLabel(new ResourceModel("271"))).setOutputMarkupId(true).setOutputMarkupPlaceholderTag(true);
 		booleanBox.add(valueB.setLabel(new ResourceModel("271"))).setOutputMarkupId(true).setOutputMarkupPlaceholderTag(true);
 		hotkeyBox.add(valueH.setLabel(new ResourceModel("271"))).setOutputMarkupId(true).setOutputMarkupPlaceholderTag(true);
 		add(stringBox, numberBox, booleanBox, hotkeyBox);
+		setNewRecordVisible(true);
 	}
 
 	@Override
@@ -168,7 +166,7 @@ public class ConfigForm extends AdminBaseForm<Configuration> {
 			getModelObject().setId(c.getId());
 		}
 		setModelObject(cfgDao.update(getModelObject(), WebSession.getUserId()));
-		setNewVisible(false);
+		setNewRecordVisible(false);
 		target.add(listContainer);
 		refresh(target);
 	}

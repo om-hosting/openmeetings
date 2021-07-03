@@ -20,8 +20,10 @@ package org.apache.openmeetings.util.crypt;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.io.InputStream;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Properties;
 
 import org.apache.commons.codec.binary.Base64;
 import org.bouncycastle.crypto.generators.SCrypt;
@@ -30,21 +32,19 @@ import org.slf4j.LoggerFactory;
 
 public class SCryptImplementation implements ICrypt {
 	private static final Logger log = LoggerFactory.getLogger(SCryptImplementation.class);
-	private static final ThreadLocal<SecureRandom> rnd = new ThreadLocal<>() {
-		@Override
-		protected SecureRandom initialValue() {
-			SecureRandom sr;
-			try {
-				sr = SecureRandom.getInstance(SECURE_RND_ALG);
-			} catch (NoSuchAlgorithmException e) {
-				log.error("Failed to get instance of SecureRandom {}", SECURE_RND_ALG);
-				sr = new SecureRandom();
-			}
-			return sr;
-		}
-	};
 	private static final String SECURE_RND_ALG = "SHA1PRNG";
-	private static final int COST = 1024 * 16;
+	private static final ThreadLocal<SecureRandom> rnd
+			= ThreadLocal.withInitial(() -> {
+				SecureRandom sr;
+				try {
+					sr = SecureRandom.getInstance(SECURE_RND_ALG);
+				} catch (NoSuchAlgorithmException e) {
+					log.error("Failed to get instance of SecureRandom {}", SECURE_RND_ALG);
+					sr = new SecureRandom();
+				}
+				return sr;
+			});
+	private static int cost = 1024 * 16;
 	private static final int KEY_LENGTH = 512;
 	private static final int SALT_LENGTH = 200;
 
@@ -54,8 +54,18 @@ public class SCryptImplementation implements ICrypt {
 		return salt;
 	}
 
+	SCryptImplementation() {
+		try (final InputStream is = getClass().getResourceAsStream("/openmeetings.properties")) {
+			Properties props = new Properties();
+			props.load(is);
+			cost = Integer.valueOf(props.getProperty("scrypt.cost", "" + cost));
+		} catch (Exception e) {
+			log.error("Failed to initialize the cost {}", e.getMessage());
+		}
+	}
+
 	private static String hash(String str, byte[] salt) {
-		byte[] dk = SCrypt.generate(str.getBytes(UTF_8), salt, COST, 8, 8, KEY_LENGTH);
+		byte[] dk = SCrypt.generate(str.getBytes(UTF_8), salt, cost, 8, 8, KEY_LENGTH);
 		return Base64.encodeBase64String(dk);
 	}
 

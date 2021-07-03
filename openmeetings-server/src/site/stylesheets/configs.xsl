@@ -40,26 +40,41 @@
 				configuration values.
 			</p>
 			<p></p>
-			<table>
-				<tr>
-					<th> key </th>
-					<th> default </th>
-					<th> meaning </th>
-					<th> availabe since OpenMeetings version </th>
-				</tr>
+			<div class="container grid-striped">
+				<div class="row font-weight-bold mb-3">
+					<div class="col-1 p-2"> # </div>
+					<div class="col-3 text-break p-2"> key </div>
+					<div class="col-3 text-break p-2"> default </div>
+					<div class="col-4 text-break p-2"> meaning </div>
+					<div class="col-1 p-2"> version </div>
+				</div>
 			<xsl:apply-templates/>
-			</table>
+			</div>
 		</section>
 	</body>
 </document>
 	</xsl:template>
 
 	<xsl:template match="config">
-				<tr>
-					<td><xsl:value-of select="key"/></td>
-					<td><xsl:value-of select="value"/></td>
-					<td><xsl:value-of select="comment"/></td>
-					<td><xsl:value-of select="fromVersion"/></td>
-				</tr>
+				<div class="row mb-3">
+					<div class="col-1 p-2"><xsl:value-of select="position() div 2"/></div>
+					<div class="col-3 text-break p-2">
+						<xsl:choose>
+							<xsl:when test="type='BOOL'">
+								<div class="pr-2 fas fa-toggle-on text-success fa-2x" title="Boolean"></div>
+							</xsl:when>
+							<xsl:when test="type='NUMBER'">
+								<div class="pr-2 fas fa-2x" title="Number">#</div>
+							</xsl:when>
+							<xsl:otherwise>
+								<div class="pr-2 fas fa-font fa-2x" title="String"></div>
+							</xsl:otherwise>
+						</xsl:choose>
+						<xsl:value-of select="key"/>
+					</div>
+					<div class="col-3 text-break font-italic font-weight-bold p-2"><xsl:value-of select="value"/></div>
+					<div class="col-4 text-break p-2"><xsl:value-of select="comment"/></div>
+					<div class="col-1 p-2"><xsl:value-of select="fromVersion"/></div>
+				</div>
 	</xsl:template>
 </xsl:stylesheet>

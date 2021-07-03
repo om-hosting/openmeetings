@@ -32,11 +32,12 @@ import java.util.function.Consumer;
 import org.apache.openmeetings.AbstractWicketTester;
 import org.apache.openmeetings.db.entity.calendar.Appointment;
 import org.apache.openmeetings.db.entity.record.Recording;
+import org.apache.openmeetings.db.entity.user.Group;
 import org.apache.openmeetings.db.entity.user.User;
 import org.apache.wicket.util.string.Strings;
 import org.junit.jupiter.api.Test;
 
-public class TestSubjTemplate extends AbstractWicketTester {
+class TestSubjTemplate extends AbstractWicketTester {
 	private static void checkTemplate(SubjectEmailTemplate t) {
 		assertNotNull(t, "Template should be created");
 		assertFalse(Strings.isEmpty(t.getSubject()), "Subject should be not empty");
@@ -44,7 +45,7 @@ public class TestSubjTemplate extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testTemplateGeneration() {
+	void testTemplateGeneration() {
 		Appointment a = getAppointment();
 		String[] ids = TimeZone.getAvailableIDs();
 		Recording rec = new Recording();
@@ -56,6 +57,8 @@ public class TestSubjTemplate extends AbstractWicketTester {
 		ar.setLanguageId(14L); // rtl, arabic
 		users.add(en);
 		users.add(ar);
+		Group g = new Group();
+		g.setName("Template test");
 		for (User u : users) {
 			TimeZone tz = TimeZone.getTimeZone(ids[rnd.nextInt(ids.length)]);
 			checkTemplate(CreatedAppointmentTemplate.get(u, a, tz, u.getLogin()));
@@ -63,6 +66,7 @@ public class TestSubjTemplate extends AbstractWicketTester {
 			checkTemplate(UpdatedAppointmentTemplate.get(u, a, tz, u.getLogin()));
 			checkTemplate(AppointmentReminderTemplate.get(u, a, tz));
 			checkTemplate(RecordingExpiringTemplate.get(u, rec, 1L));
+			checkTemplate(NewGroupUsersNotificationTemplate.get(u, g, 18L));
 		}
 	}
 
@@ -76,7 +80,7 @@ public class TestSubjTemplate extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testError() {
+	void testError() {
 		InvitedAppointmentTemplate t = new InvitedAppointmentTemplate(Locale.CHINA, new Appointment(), TimeZone.getDefault(), "TEST") {
 			private static final long serialVersionUID = 1L;
 

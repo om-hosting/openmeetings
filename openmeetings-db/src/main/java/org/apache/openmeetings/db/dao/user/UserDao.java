@@ -105,7 +105,6 @@ public class UserDao implements IGroupAdminDataProviderDao<User> {
 		user.setRights(getDefaultRights());
 		user.setLanguageId(getDefaultLang());
 		user.setTimeZoneId(getTimeZone(currentUser).getID());
-		user.setForceTimeZoneCheck(false);
 		user.setAge(LocalDate.now());
 		user.setLastlogin(new Date());
 		Address address = new Address();
@@ -160,17 +159,13 @@ public class UserDao implements IGroupAdminDataProviderDao<User> {
 		return q.getResultList();
 	}
 
-	//This is AdminDao method
+	// This is AdminDao method
 	public List<User> get(String search, boolean excludeContacts, long first, long count) {
 		Map<String, Object> params = new HashMap<>();
 		TypedQuery<User> q = em.createQuery(DaoHelper.getSearchQuery("User", "u", null, search, true, true, false
 				, getAdditionalWhere(excludeContacts, params), null, searchFields), User.class);
 		setAdditionalParams(setLimits(q, first, count), params);
 		return q.getResultList();
-	}
-
-	public List<User> get(String search, boolean filterContacts, Long currentUserId) {
-		return get(search, null, null, null, filterContacts, currentUserId, true);
 	}
 
 	public List<User> get(String search, long start, long count, String sort, boolean filterContacts, Long currentUserId) {
@@ -237,10 +232,8 @@ public class UserDao implements IGroupAdminDataProviderDao<User> {
 			if (u.getRegdate() == null) {
 				u.setRegdate(new Date());
 			}
-			u.setInserted(new Date());
 			em.persist(u);
 		} else {
-			u.setUpdated(new Date());
 			u = em.merge(u);
 		}
 		return u;
@@ -298,7 +291,6 @@ public class UserDao implements IGroupAdminDataProviderDao<User> {
 		if (u != null && u.getId() != null) {
 			u.setGroupUsers(new ArrayList<>());
 			u.setDeleted(true);
-			u.setUpdated(new Date());
 			u.setSipUser(null);
 			Address adr = u.getAddress();
 			if (adr != null) {
@@ -443,7 +435,7 @@ public class UserDao implements IGroupAdminDataProviderDao<User> {
 		try {
 			// get all users
 			TypedQuery<Long> query = em.createNamedQuery("selectMaxFromUsersWithSearch", Long.class);
-			query.setParameter("search", StringUtils.lowerCase(search));
+			query.setParameter("search", StringUtils.lowerCase(search, Locale.ROOT));
 			List<Long> ll = query.getResultList();
 			log.info("selectMaxFromUsers {}", ll.get(0));
 			return ll.get(0);
@@ -538,7 +530,7 @@ public class UserDao implements IGroupAdminDataProviderDao<User> {
 		boolean count = clazz.isAssignableFrom(Long.class);
 
 		StringBuilder sb = new StringBuilder("SELECT ");
-		sb.append(count ? "COUNT(" : "").append("u").append(count ? ") " : " ")
+		sb.append(count ? "COUNT(" : "").append("DISTINCT u").append(count ? ") " : " ")
 			.append("FROM User u ").append(getAdditionalJoin(filterContacts)).append(" WHERE u.deleted = false AND ")
 			.append(getAdditionalWhere(filterContacts, userId, params));
 		if (!Strings.isEmpty(offers)) {

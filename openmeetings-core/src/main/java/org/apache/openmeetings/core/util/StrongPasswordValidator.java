@@ -19,13 +19,15 @@
 package org.apache.openmeetings.core.util;
 
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getMinPasswdLength;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.isPwdCheckDigit;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.isPwdCheckSpecial;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.isPwdCheckUpper;
 
 import java.util.Locale;
 import java.util.Map;
 
 import org.apache.openmeetings.db.dao.label.LabelDao;
 import org.apache.openmeetings.db.entity.user.User;
-import org.apache.wicket.util.collections.MicroMap;
 import org.apache.wicket.util.string.Strings;
 import org.apache.wicket.validation.IValidatable;
 import org.apache.wicket.validation.IValidator;
@@ -49,15 +51,15 @@ public class StrongPasswordValidator implements IValidator<String> {
 	}
 
 	private static boolean noDigit(String password) {
-		return password == null || !password.matches(".*\\d+.*");
+		return password == null || (isPwdCheckDigit() && !password.matches(".*\\d+.*"));
 	}
 
 	private static boolean noSymbol(String password) {
-		return password == null || !password.matches(".*[!@#$%^&*\\]\\[]+.*");
+		return password == null || (isPwdCheckSpecial() && !password.matches(".*[!@#$%^&*\\]\\[]+.*"));
 	}
 
 	private static boolean noUpperCase(String password) {
-		return password == null || password.equals(password.toLowerCase(Locale.ROOT));
+		return password == null || (isPwdCheckUpper() && password.equals(password.toLowerCase(Locale.ROOT)));
 	}
 
 	private static boolean noLowerCase(String password) {
@@ -69,7 +71,7 @@ public class StrongPasswordValidator implements IValidator<String> {
 	}
 
 	private static boolean checkWord(String password, String word) {
-		if (Strings.isEmpty(word) || word.length() < 3) {
+		if (Strings.isEmpty(password) || Strings.isEmpty(word) || word.length() < 3) {
 			return false;
 		}
 		for (int i = 0; i < word.length() - 3; ++i) {
@@ -124,7 +126,7 @@ public class StrongPasswordValidator implements IValidator<String> {
 	@Override
 	public void validate(IValidatable<String> pass) {
 		if (badLength(pass.getValue())) {
-			error(pass, "bad.password.short", new MicroMap<String, Object>("0", getMinPasswdLength()));
+			error(pass, "bad.password.short", Map.of("0", getMinPasswdLength()));
 		}
 		if (noLowerCase(pass.getValue())) {
 			error(pass, "bad.password.lower");

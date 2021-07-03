@@ -37,6 +37,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.MapKeyColumn;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAnyElement;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -55,8 +57,17 @@ import org.apache.openmeetings.db.entity.HistoricalEntity;
 @NamedQuery(name = "getAllOAuthServers", query = "SELECT s FROM OAuthServer s WHERE s.deleted = false ORDER BY s.id")
 @NamedQuery(name = "countOAuthServers", query = "select count(s) from OAuthServer s WHERE s.deleted = false")
 @XmlRootElement(name = OAUTH_NODE)
+@XmlAccessorType(XmlAccessType.FIELD)
 public class OAuthServer extends HistoricalEntity {
 	private static final long serialVersionUID = 1L;
+
+	public enum RequestTokenMethod {
+		POST, GET
+	}
+
+	public enum RequestInfoMethod {
+		POST, GET, HEADER
+	}
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -116,7 +127,6 @@ public class OAuthServer extends HistoricalEntity {
 	@MapKeyColumn(name = "name")
 	@Column(name = "value")
 	@CollectionTable(name = "oauth_mapping", joinColumns = @JoinColumn(name = "oauth_id"))
-	//FIXME TODO @XmlElement(name = "attrMapping", required = false)
 	@XmlTransient
 	private Map<String, String> mapping = new LinkedHashMap<>();
 
@@ -262,13 +272,5 @@ public class OAuthServer extends HistoricalEntity {
 				.append(", mapping=").append(mapping)
 				.append(", isDeleted()=").append(isDeleted())
 				.append("]").toString();
-	}
-
-	public enum RequestTokenMethod {
-		POST, GET
-	}
-
-	public enum RequestInfoMethod {
-		POST, GET, HEADER
 	}
 }

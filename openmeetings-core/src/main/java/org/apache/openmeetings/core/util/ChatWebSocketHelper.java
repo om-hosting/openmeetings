@@ -18,6 +18,10 @@
  */
 package org.apache.openmeetings.core.util;
 
+import static org.apache.openmeetings.core.util.WebSocketHelper.alwaysTrue;
+import static org.apache.openmeetings.core.util.WebSocketHelper.doSend;
+import static org.apache.openmeetings.core.util.WebSocketHelper.publish;
+
 import java.util.List;
 import java.util.function.BiConsumer;
 
@@ -36,11 +40,15 @@ import org.apache.openmeetings.util.ws.IClusterWsMessage;
 import com.github.openjson.JSONArray;
 import com.github.openjson.JSONObject;
 
-public class ChatWebSocketHelper extends WebSocketHelper {
+public class ChatWebSocketHelper {
 	public static final String ID_TAB_PREFIX = "chatTab-";
 	public static final String ID_ALL = ID_TAB_PREFIX + "all";
 	public static final String ID_ROOM_PREFIX = ID_TAB_PREFIX + "r";
 	public static final String ID_USER_PREFIX = ID_TAB_PREFIX + "u";
+
+	private ChatWebSocketHelper() {
+		// denied
+	}
 
 	private static JSONObject setScope(JSONObject o, ChatMessage m, long curUserId) {
 		String scope, scopeName = null;
@@ -61,7 +69,7 @@ public class ChatWebSocketHelper extends WebSocketHelper {
 		JSONArray arr = new JSONArray();
 		for (ChatMessage m : list) {
 			String smsg = m.getMessage();
-			smsg = smsg == null ? smsg : " " + smsg.replaceAll("&nbsp;", " ") + " ";
+			smsg = smsg == null ? smsg : " " + smsg.replace("&nbsp;", " ") + " ";
 			JSONObject from = new JSONObject()
 					.put("id", m.getFromUser().getId())
 					.put("displayName", m.getFromName())
@@ -81,7 +89,7 @@ public class ChatWebSocketHelper extends WebSocketHelper {
 			.put("msg", arr);
 	}
 
-	public static void send(IClusterWsMessage msg) {
+	public static boolean send(IClusterWsMessage msg) {
 		if (msg instanceof WsMessageChat) {
 			if (msg instanceof WsMessageChat2User) {
 				WsMessageChat2User m = (WsMessageChat2User)msg;
@@ -93,9 +101,9 @@ public class ChatWebSocketHelper extends WebSocketHelper {
 				WsMessageChat m = (WsMessageChat)msg;
 				sendRoom(m.getChatMessage(), m.getMsg(), false);
 			}
-		} else {
-			WebSocketHelper.send(msg);
+			return true;
 		}
+		return false;
 	}
 
 	public static void sendRoom(ChatMessage m, JSONObject msg) {
@@ -117,7 +125,7 @@ public class ChatWebSocketHelper extends WebSocketHelper {
 		if (publish) {
 			publish(new WsMessageChat(m, msg));
 		}
-		sendRoom(m.getToRoom().getId(), msg
+		WebSocketHelper.sendRoom(m.getToRoom().getId(), msg
 				, c -> !m.isNeedModeration() || (m.isNeedModeration() && c.hasRight(Right.MODERATOR))
 				, (o, c) -> setDates(o, m, c.getUser(), false));
 	}
@@ -130,7 +138,7 @@ public class ChatWebSocketHelper extends WebSocketHelper {
 		if (publish) {
 			publish(new WsMessageChat2User(userId, m, msg));
 		}
-		sendUser(userId, msg, (o, c) -> setDates(o, m, c.getUser(), false), false);
+		WebSocketHelper.sendUser(userId, msg, (o, c) -> setDates(o, m, c.getUser(), false), false);
 	}
 
 	public static void sendAll(ChatMessage m, JSONObject msg) {
@@ -141,7 +149,7 @@ public class ChatWebSocketHelper extends WebSocketHelper {
 		if (publish) {
 			publish(new WsMessageChat2All(m, msg));
 		}
-		send(a -> ((IApplication)a).getBean(IClientManager.class).list()
-				, (t, c) -> doSend(t, c, msg, (o, cm) -> setDates(o, m, c.getUser(), false), "all"), null);
+		WebSocketHelper.send(a -> ((IApplication)a).getBean(IClientManager.class).stream()
+				, (t, c) -> doSend(t, c, msg, (o, cm) -> setDates(o, m, c.getUser(), false), "all"), alwaysTrue());
 	}
 }

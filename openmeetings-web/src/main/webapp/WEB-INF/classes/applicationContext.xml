@@ -22,10 +22,12 @@
 		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		xmlns:tx="http://www.springframework.org/schema/tx"
 		xmlns:context="http://www.springframework.org/schema/context"
+		xmlns:aop="http://www.springframework.org/schema/aop"
 		xmlns:p="http://www.springframework.org/schema/p"
 		xsi:schemaLocation="
 			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 			http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+			http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
 			http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd"
 	>
 	<bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalEntityManagerFactoryBean">
@@ -38,20 +40,14 @@
 
 	<tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
 	<context:annotation-config />
+	<!-- Start annotation Prometheus metrics
+	<aop:aspectj-autoproxy/>
+	End annotation -->
 	<context:component-scan base-package="org.apache.openmeetings" />
 
-	<!--
-			5000		== 5 sec
-			300000		== 5 min
-			900000		== 15 min
-			1800000		== 30 min
-			3600000		== 1 hour
-			86400000	== 1 day
-			604800000	== 7 days
-	 -->
-	<bean id="cleanupJob" class="org.apache.openmeetings.service.quartz.scheduler.CleanupJob"
-			p:sessionTimeout="1800000" p:testSetupTimeout="3600000" p:resetHashTtl="86400000"
-			p:confLogTtl="604800000" />
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+		p:location="classpath:openmeetings.properties" />
+
 	<!-- sessions clean-up -->
 	<bean id="cleanSessionsJobDetails" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean"
 			p:targetObject-ref="cleanupJob" p:targetMethod="cleanSessions" p:concurrent="false" />
@@ -94,6 +90,10 @@
 			p:targetObject-ref="reminderJob" p:targetMethod="checkHealth" p:concurrent="false" />
 	<bean id="triggerCheckHealth" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean"
 			p:jobDetail-ref="checkHealthJobDetail" p:startDelay="5000" p:repeatInterval="15000"/>
+	<bean id="notifyNewGroupUsersDetail" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean"
+			p:targetObject-ref="reminderJob" p:targetMethod="notifyNewGroupUsers" p:concurrent="false" />
+	<bean id="triggerNotifyNewGroupUsers" class="org.springframework.scheduling.quartz.SimpleTriggerFactoryBean"
+			p:jobDetail-ref="notifyNewGroupUsersDetail" p:startDelay="5000" p:repeatInterval="3600000"/>
 
 	<!-- Mail related jobs -->
 	<bean id="resetSendingMailStatus" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean"
@@ -119,22 +119,11 @@
 				<ref bean="triggerSendMails" />
 				<ref bean="triggerLoadRss" />
 				<ref bean="triggerCheckHealth" />
+				<ref bean="triggerNotifyNewGroupUsers" />
 			</list>
 		</property>
 	</bean>
 	<!-- End of Services -->
-
-	<!-- Interface Transactional -->
-	<bean id="sipDao" class="org.apache.openmeetings.db.dao.room.SipDao">
-	<!-- Should be uncommented and updated with real values for Asterisk
-		<constructor-arg index="0" value="127.0.0.1"/>
-		<constructor-arg index="1" value="5038" type = "int"/>
-		<constructor-arg index="2" value="openmeetings"/>
-		<constructor-arg index="3" value="12345"/>
-		<constructor-arg index="4" value="10000" type = "long"/>
-		<property name="uid" value="87dddad4-9ca5-475b-860f-2e0825d02b76"/>
-	-->
-	</bean>
 
 	<!-- Thread Executor -->
 	<bean id="taskExecutor" class="org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor">
@@ -142,18 +131,4 @@
 		<property name="maxPoolSize" value="10" />
 		<property name="queueCapacity" value="25" />
 	</bean>
-
-	<!-- Kurento -->
-	<bean id="kurentoHandler" class="org.apache.openmeetings.core.remote.KurentoHandler" init-method="init" destroy-method="destroy"
-			p:kurentoWsUrl="ws://127.0.0.1:8888/kurento"
-			p:checkTimeout="10000"
-			p:watchThreadCount="10"
-			p:turnUrl=""
-			p:turnUser=""
-			p:turnSecret=""
-			p:turnMode="rest"
-			p:turnTtl="60"
-			p:objCheckTimeout="200"
-			p:flowoutTimeout="5"
-			/>
 </beans>

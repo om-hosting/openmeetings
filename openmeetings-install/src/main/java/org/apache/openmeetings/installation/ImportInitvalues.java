@@ -25,13 +25,20 @@ import static org.apache.openmeetings.db.dto.user.OAuthUser.PARAM_LNAME;
 import static org.apache.openmeetings.db.dto.user.OAuthUser.PARAM_LOGIN;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_APPLICATION_BASE_URL;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_APPLICATION_NAME;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_APPOINTMENT_PRE_START_MINUTES;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_APPOINTMENT_REMINDER_MINUTES;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_AUTO_OPEN_SHARING;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CALENDAR_ROOM_CAPACITY;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CAM_FPS;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CHAT_SEND_ON_ENTER;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CRYPT;
-import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_XFRAME;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_ENABLED;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_FONT;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_FRAME;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_IMAGE;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_MEDIA;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_SCRIPT;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_STYLE;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_DASHBOARD_RSS_FEED1;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_DASHBOARD_RSS_FEED2;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_DASHBOARD_SHOW_CHAT;
@@ -50,9 +57,9 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_EMAIL_VE
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_EXT_PROCESS_TTL;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_FNAME_MIN_LENGTH;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_GOOGLE_ANALYTICS_CODE;
-import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_HEADER_CSP;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_IGNORE_BAD_SSL;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_KEYCODE_ARRANGE;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_KEYCODE_ARRANGE_RESIZE;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_KEYCODE_MUTE;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_KEYCODE_MUTE_OTHERS;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_KEYCODE_QUICKPOLL;
@@ -66,11 +73,15 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_MP4_AUDI
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_MP4_AUDIO_RATE;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_MP4_VIDEO_PRESET;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_MYROOMS_ENABLED;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PASS_CHECK_DIGIT;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PASS_CHECK_SPECIAL;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PASS_CHECK_UPPER;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PASS_MIN_LENGTH;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PATH_FFMPEG;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PATH_IMAGEMAGIC;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PATH_OFFICE;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PATH_SOX;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_RECORDING_ENABLED;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REDIRECT_URL_FOR_EXTERNAL;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REGISTER_FRONTEND;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REGISTER_OAUTH;
@@ -88,32 +99,38 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SIP_ROOM
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_PASS;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_PORT;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_SERVER;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_SSL;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_SYSTEM_EMAIL;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_TIMEOUT;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_TIMEOUT_CON;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_TLS;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_SMTP_USER;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_THEME;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.DEFAULT_APP_NAME;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.DEFAULT_CSP_DATA;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.DEFAULT_CSP_FONT;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.DEFAULT_CSP_STYLE;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.DEFAULT_MAX_UPLOAD_SIZE;
-import static org.apache.openmeetings.util.OpenmeetingsVariables.DEFAULT_MINUTES_REMINDER_SEND;
-import static org.apache.openmeetings.util.OpenmeetingsVariables.HEADER_CSP_SELF;
-import static org.apache.openmeetings.util.OpenmeetingsVariables.HEADER_XFRAME_SELF;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.USER_LOGIN_MINIMUM_LENGTH;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.USER_PASSWORD_MINIMUM_LENGTH;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.getAppointmentPreStartMinutes;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.getAppointmentReminderMinutes;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getAudioBitrate;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getAudioRate;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getDefaultGroup;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getExtProcessTtl;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.getTheme;
+import static org.apache.wicket.csp.CSPDirectiveSrcValue.SELF;
+import static org.apache.wicket.csp.CSPDirectiveSrcValue.STRICT_DYNAMIC;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.apache.openmeetings.core.sip.SipManager;
 import org.apache.openmeetings.db.dao.basic.ConfigurationDao;
 import org.apache.openmeetings.db.dao.label.LabelDao;
 import org.apache.openmeetings.db.dao.room.RoomDao;
-import org.apache.openmeetings.db.dao.room.SipDao;
 import org.apache.openmeetings.db.dao.server.OAuth2Dao;
 import org.apache.openmeetings.db.dao.user.GroupDao;
 import org.apache.openmeetings.db.dao.user.UserDao;
@@ -143,6 +160,7 @@ public class ImportInitvalues {
 	private static final String VER_3_0_3 = "3.0.3";
 	private static final String VER_3_3_0 = "3.3.0";
 	private static final String VER_5_0_0 = "5.0.0";
+	private static final String VER_5_0_1 = "5.0.1";
 	private static final String CLIENT_PLACEHOLDER = "<put your client_id>";
 	private static final String SECRET_PLACEHOLDER = "<put your client_secret>";
 	private static final String EMAIL_PARAM = "email";
@@ -154,7 +172,7 @@ public class ImportInitvalues {
 	@Autowired
 	private UserDao userDao;
 	@Autowired
-	private SipDao sipDao;
+	private SipManager sipDao;
 	@Autowired
 	private OAuth2Dao oauthDao;
 	@Autowired
@@ -293,7 +311,7 @@ public class ImportInitvalues {
 		addCfg(list, CONFIG_MAX_UPLOAD_SIZE, String.valueOf(DEFAULT_MAX_UPLOAD_SIZE), Configuration.Type.NUMBER,
 				"Maximum size of upload file (bytes)", VER_1_8);
 
-		addCfg(list, CONFIG_APPOINTMENT_REMINDER_MINUTES, String.valueOf(DEFAULT_MINUTES_REMINDER_SEND), Configuration.Type.NUMBER,
+		addCfg(list, CONFIG_APPOINTMENT_REMINDER_MINUTES, String.valueOf(getAppointmentReminderMinutes()), Configuration.Type.NUMBER,
 				"The number of minutes before reminder emails are send. Set to 0 to disable reminder emails", VER_1_9);
 
 		addCfg(list, CONFIG_LOGIN_MIN_LENGTH, String.valueOf(USER_LOGIN_MINIMUM_LENGTH), Configuration.Type.NUMBER,
@@ -321,17 +339,19 @@ public class ImportInitvalues {
 
 		addCfg(list, CONFIG_DEFAULT_LANDING_ZONE, "user/dashboard", Configuration.Type.STRING
 				, "Area to be shown to the user after login. Possible values are: "
-						+ "user/dashboard, user/calendar, user/record, rooms/my, rooms/group, rooms/public, admin/user, admin/connection"
-						+ ", admin/group, admin/room, admin/config, admin/lang, admin/ldap, admin/backup, admin/server, admin/oauth2", "2.1.x");
+						+ "user/dashboard, user/calendar, user/record, rooms/my, rooms/group, rooms/public"
+						+ ", profile/messages, profile/edit, profile/search, profile/invitation, profile/widget"
+						+ ", admin/user, admin/connection"
+						+ ", admin/group, admin/room, admin/config, admin/lang, admin/ldap, admin/oauth2, admin/backup, admin/email", "2.1.x");
 
 		// oauth2 params
 		addCfg(list, CONFIG_IGNORE_BAD_SSL, String.valueOf(false), Configuration.Type.BOOL,
-				"Set \"yes\" or \"no\" to enable/disable ssl certifications checking for OAuth2", VER_3_0);
+				"Set \"yes\" or \"no\" to enable/disable ssl certifications checking for OAuth2\n"
+				+ "WARNING: it is not secure", VER_3_0);
 
 		addCfg(list, CONFIG_REDIRECT_URL_FOR_EXTERNAL, "", Configuration.Type.STRING,
 				"Users entered the room via invitationHash or secureHash will be redirected to this URL on connection lost", VER_3_0);
 		addCfg(list, CONFIG_GOOGLE_ANALYTICS_CODE, null, Configuration.Type.STRING, "Code for Google Analytics", "3.1.0");
-		addCfg(list, CONFIG_HEADER_CSP, HEADER_CSP_SELF, Configuration.Type.STRING, String.format("Value for 'Content-Security-Policy' header (default: %s), have to be modified to enable Google analytics site: https://content-security-policy.com/", HEADER_CSP_SELF), VER_3_3_0);
 		addCfg(list, CONFIG_EXT_PROCESS_TTL, String.valueOf(getExtProcessTtl()), Configuration.Type.NUMBER, String.format("Time to live in minutes for external processes such as conversion via ffmpeg (default %s minutes)", getExtProcessTtl()), VER_3_3_0);
 		addCfg(list, CONFIG_MYROOMS_ENABLED, String.valueOf(true), Configuration.Type.BOOL, "Users are allowed to create personal rooms", "3.3.2");
 		addCfg(list, CONFIG_REMINDER_MESSAGE, null, Configuration.Type.STRING, "Reminder message to notify about upcoming appointment, generated message will be used if not set", VER_2_0);
@@ -344,18 +364,43 @@ public class ImportInitvalues {
 				"Number of chars needed in a user last name", "4.0.4");
 		addCfg(list, CONFIG_CHAT_SEND_ON_ENTER, String.valueOf(false), Configuration.Type.BOOL,
 				"Controls if chat message will be set on Enter (default: send on Ctrl+Enter)", "4.0.5");
-		addCfg(list, CONFIG_MP4_VIDEO_PRESET, "medium", Configuration.Type.BOOL,
+		addCfg(list, CONFIG_MP4_VIDEO_PRESET, "medium", Configuration.Type.STRING,
 				"Preset (encoder optimization settings) to be used while performing mp4 conversion."
 					+ "Valid values are: ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow", "4.0.5");
 		addCfg(list, CONFIG_CAM_FPS, "30", Configuration.Type.NUMBER, "Camera FPS, should be positive number in range (0, 60]", VER_5_0_0);
 		addCfg(list, CONFIG_MIC_RATE, "22", Configuration.Type.NUMBER, "The rate at which the microphone should capture sound, in kHz. The default value is 22 kHz.", VER_5_0_0);
 		addCfg(list, CONFIG_MIC_ECHO, String.valueOf(true), Configuration.Type.BOOL, "Whether or not echo cancellation is preferred and/or required.", VER_5_0_0);
 		addCfg(list, CONFIG_MIC_NOISE, String.valueOf(true), Configuration.Type.BOOL, "Whether noise suppression is preferred and/or required.", VER_5_0_0);
-		addCfg(list, CONFIG_CSP_XFRAME, HEADER_XFRAME_SELF, Configuration.Type.STRING, String.format("Value for 'frame-src' directive of 'Content-Security-Policy' header (default: %s), more info: https://w3c.github.io/webappsec-csp/", HEADER_XFRAME_SELF), VER_5_0_0);
 		addCfg(list, CONFIG_DISPLAY_NAME_EDITABLE, String.valueOf(false), Configuration.Type.BOOL, "Is user will be able to edit his/her display name (default false).", "4.0.7");
 		addCfg(list, CONFIG_KEYCODE_QUICKPOLL, "Ctrl+Alt+KeyQ", Configuration.Type.HOTKEY
 				, "A hot key code to start quick poll", "4.0.10");
 		addCfg(list, CONFIG_AUTO_OPEN_SHARING, String.valueOf(false), Configuration.Type.BOOL, "Whether shared screen should be auto-opened.", VER_5_0_0);
+		addCfg(list, CONFIG_KEYCODE_ARRANGE_RESIZE, "Ctrl+Shift+KeyA", Configuration.Type.HOTKEY
+				, "A hot key code to arrange video windows bottom-to-top with resize to 120x90", VER_5_0_0);
+		final String cspMore = ", more info: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy";
+		addCfg(list, CONFIG_CSP_FONT, DEFAULT_CSP_FONT, Configuration.Type.STRING, "Value for 'font-src' directive of 'Content-Security-Policy' header (default: "
+				+ DEFAULT_CSP_FONT + ")" + cspMore, VER_5_0_0);
+		addCfg(list, CONFIG_CSP_FRAME, SELF.getValue(), Configuration.Type.STRING, "Value for 'frame-src' directive of 'Content-Security-Policy' header (default: "
+				+ SELF + ")" + cspMore, VER_5_0_0);
+		addCfg(list, CONFIG_CSP_IMAGE, DEFAULT_CSP_DATA, Configuration.Type.STRING, "Value for 'image-src' directive of 'Content-Security-Policy' header (default: "
+				+ DEFAULT_CSP_DATA + ")" + cspMore, VER_5_0_0);
+		addCfg(list, CONFIG_CSP_MEDIA, DEFAULT_CSP_DATA, Configuration.Type.STRING, "Value for 'media-src' directive of 'Content-Security-Policy' header (default: "
+				+ DEFAULT_CSP_DATA + ")" + cspMore, VER_5_0_0);
+		addCfg(list, CONFIG_CSP_SCRIPT, STRICT_DYNAMIC.getValue(), Configuration.Type.STRING, "Value for 'script-src' directive of 'Content-Security-Policy' header (default: "
+				+ STRICT_DYNAMIC + ")" + cspMore, VER_5_0_0);
+		addCfg(list, CONFIG_CSP_STYLE, DEFAULT_CSP_STYLE, Configuration.Type.STRING, "Value for 'style-src' directive of 'Content-Security-Policy' header (default: "
+				+ DEFAULT_CSP_STYLE + ")" + cspMore, VER_5_0_0);
+		addCfg(list, CONFIG_SMTP_SSL, String.valueOf(false), Configuration.Type.BOOL, "Enable SSL", VER_5_0_0);
+		addCfg(list, CONFIG_CSP_ENABLED, String.valueOf(true), Configuration.Type.BOOL, "Whether or not CSP secure headers are enabled", VER_5_0_0);
+		addCfg(list, CONFIG_PASS_CHECK_UPPER, String.valueOf(true), Configuration.Type.BOOL, "Whether or not Password MUST contain uppercase characters", VER_5_0_1);
+		addCfg(list, CONFIG_PASS_CHECK_DIGIT, String.valueOf(true), Configuration.Type.BOOL, "Whether or not Password MUST contain numeric", VER_5_0_1);
+		addCfg(list, CONFIG_PASS_CHECK_SPECIAL, String.valueOf(true), Configuration.Type.BOOL, "Whether or not Password MUST contain special character", VER_5_0_1);
+		addCfg(list, CONFIG_APPOINTMENT_PRE_START_MINUTES, String.valueOf(getAppointmentPreStartMinutes()), Configuration.Type.NUMBER
+				, "How many minutes before the start the room should be open (default: " + getAppointmentPreStartMinutes() + ")", VER_5_0_1);
+		addCfg(list, CONFIG_RECORDING_ENABLED, String.valueOf(true), Configuration.Type.BOOL, "Whether or not recording functionality is enabled", "6.0.0");
+		addCfg(list, CONFIG_THEME, getTheme(), Configuration.Type.STRING, "UI theme, possible values are Cerulean, Cosmo, Cyborg, Darkly, Flatly, "
+				+ "Journal, Litera, Lumen, Lux, Materia, Minty, Pulse, Sandstone, Simplex, Sketchy, Slate, Solar, Spacelab, Superhero, "
+				+ "United, Yeti", "6.1.0");
 		return list;
 	}
 	public void loadConfiguration(InstallationConfig cfg) {
@@ -369,7 +414,6 @@ public class ImportInitvalues {
 		Room r = new Room();
 		r.setName(name);
 		r.setComment("");
-		r.setInserted(new Date());
 		r.setCapacity(capacity);
 		r.setType(type);
 		r.setIspublic(isPublic);
@@ -428,7 +472,6 @@ public class ImportInitvalues {
 		g.setName(cfg.getGroup());
 		g.setInsertedby(1L);
 		g.setDeleted(false);
-		g.setInserted(new Date());
 		g = groupDao.update(g, null);
 		Configuration c = cfgDao.get(CONFIG_DEFAULT_GROUP_ID);
 		c.setValueN(g.getId());

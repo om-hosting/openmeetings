@@ -51,7 +51,10 @@ public class LdapForm extends AdminBaseForm<LdapConfig> {
 		super(id, new CompoundPropertyModel<>(ldapConfig));
 		setOutputMarkupId(true);
 		this.listContainer = listContainer;
+	}
 
+	@Override
+	protected void onInitialize() {
 		add(new CheckBox("active"));
 		add(new DateLabel("inserted"));
 		add(new Label("insertedby.login"));
@@ -60,19 +63,16 @@ public class LdapForm extends AdminBaseForm<LdapConfig> {
 		add(new CheckBox("addDomainToUserName"));
 		add(new TextField<String>("domain"));
 		add(new TextArea<String>("comment"));
-	}
-
-	@Override
-	protected void onInitialize() {
 		add(new RequiredTextField<String>("name").setLabel(new ResourceModel("165")));
 		add(new RequiredTextField<String>("configFileName").setLabel(new ResourceModel("1115")));
 		super.onInitialize();
+		setNewRecordVisible(true);
 	}
 
 	@Override
 	protected void onSaveSubmit(AjaxRequestTarget target, Form<?> form) {
 		setModelObject(ldapDao.update(getModelObject(), WebSession.getUserId()));
-		setNewVisible(false);
+		setNewRecordVisible(false);
 		target.add(this, listContainer);
 	}
 

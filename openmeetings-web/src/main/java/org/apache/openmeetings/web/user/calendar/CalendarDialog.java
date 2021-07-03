@@ -19,7 +19,7 @@
 package org.apache.openmeetings.web.user.calendar;
 
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelDangerConfirm;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelDangerConfirm;
 
 import java.util.List;
 
@@ -27,6 +27,7 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.openmeetings.db.dao.calendar.AppointmentDao;
+import org.apache.openmeetings.db.dao.user.UserDao;
 import org.apache.openmeetings.db.entity.calendar.Appointment;
 import org.apache.openmeetings.db.entity.calendar.OmCalendar;
 import org.apache.openmeetings.service.calendar.caldav.AppointmentManager;
@@ -74,6 +75,8 @@ public class CalendarDialog extends Modal<OmCalendar> {
 	private List<OmCalendar> cals; //List of calendars for syncing
 	private int calIndex = 0;
 	@SpringBean
+	private UserDao userDao;
+	@SpringBean
 	private AppointmentDao apptDao;
 	@SpringBean
 	private AppointmentManager apptManager;
@@ -101,7 +104,7 @@ public class CalendarDialog extends Modal<OmCalendar> {
 		form = new UserCalendarForm("calform", getModel());
 		add(form);
 
-		addButton(save = new BootstrapAjaxButton("button", new ResourceModel("144"), form, Buttons.Type.Outline_Primary) {
+		addButton(save = new BootstrapAjaxButton(BUTTON_MARKUP_ID, new ResourceModel("144"), form, Buttons.Type.Outline_Primary) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -110,6 +113,7 @@ public class CalendarDialog extends Modal<OmCalendar> {
 					case UPDATE_CALENDAR:
 						OmCalendar c = form.getModelObject();
 						c.setHref(form.url.getModelObject());
+						c.setOwner(userDao.get(c.getOwner().getId())); // owner might need to be refreshed
 						HttpClient client = calendarPanel.getHttpClient();
 						HttpClientContext context = calendarPanel.getHttpClientContext();
 
@@ -154,7 +158,7 @@ public class CalendarDialog extends Modal<OmCalendar> {
 			}
 		});
 		save.setOutputMarkupId(true).setOutputMarkupPlaceholderTag(true);
-		delete = new BootstrapAjaxLink<>("button", null, Buttons.Type.Outline_Danger, new ResourceModel("80")) {
+		delete = new BootstrapAjaxLink<>(BUTTON_MARKUP_ID, null, Buttons.Type.Outline_Danger, new ResourceModel("80")) {
 			private static final long serialVersionUID = 1L;
 
 			@Override

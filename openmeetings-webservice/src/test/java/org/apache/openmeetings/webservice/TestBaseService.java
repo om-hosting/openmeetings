@@ -20,30 +20,20 @@ package org.apache.openmeetings.webservice;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 import java.util.Set;
 
 import org.apache.openmeetings.db.entity.server.Sessiondata;
 import org.apache.openmeetings.db.entity.user.User.Right;
+import org.apache.openmeetings.webservice.error.InternalServiceException;
 import org.apache.openmeetings.webservice.error.ServiceException;
 import org.junit.jupiter.api.Test;
 
-import com.sun.star.uno.RuntimeException;
-
-public class TestBaseService {
-	private static void checkException(Runnable r) {
-		try {
-			r.run();
-			fail("ServiceException expected");
-		} catch (ServiceException e) {
-			assertTrue(true, "expected");
-		}
-	}
-
+class TestBaseService {
 	@Test
-	public void testCheck() {
+	void testCheck() {
 		Sessiondata sd = new BaseWebService() {}.check(null);
 		assertNotNull(sd, "NOT null Sessiondata should be returned");
 		assertNull(sd.getUserId(), "UserId should be null");
@@ -55,18 +45,20 @@ public class TestBaseService {
 	}
 
 	@Test
-	public void testGetRights1() {
+	void testGetRights1() {
 		checkRights(new BaseWebService() {}.getRights(1L));
 	}
 
 	@Test
-	public void testGetRights2() {
+	void testGetRights2() {
 		checkRights(new BaseWebService() {}.getRights(""));
 	}
 
 	@Test
-	public void testPerformCall() {
-		checkException(() -> new BaseWebService() {}.performCall("", sd -> true
-				, sd -> { throw new RuntimeException("test"); }));
+	void testPerformCall() {
+		assertThrows(ServiceException.class, () -> {
+			new BaseWebService() {}.performCall("", sd -> true
+				, sd -> { throw new InternalServiceException("test"); });
+		});
 	}
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.openmeetings.backup;
 
+import static org.apache.openmeetings.backup.TestImport.BACKUP_ROOT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
@@ -26,22 +27,22 @@ import org.apache.openmeetings.db.dao.room.RoomDao;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class TestImportRoom extends AbstractTestImport {
+class TestImportRoom extends AbstractTestImport {
 	@Autowired
 	private RoomDao roomDao;
 
 	@Test
-	public void importRooms() throws Exception {
+	void importRooms() throws Exception {
 		long roomsCount = roomDao.count();
-		File rooms = new File(getClass().getClassLoader().getResource("org/apache/openmeetings/backup/room/rooms.xml").toURI());
+		File rooms = new File(getClass().getClassLoader().getResource(BACKUP_ROOT + "room/rooms.xml").toURI());
 		backupImport.importRooms(rooms.getParentFile());
 		assertEquals(roomsCount + 1, roomDao.count(), "Room should be added");
 	}
 
 	@Test
-	public void importRoomGroups() throws Exception {
+	void importRoomGroups() throws Exception {
 		//TODO need to check it somehow
-		File rooms = new File(getClass().getClassLoader().getResource("org/apache/openmeetings/backup/room/rooms.xml").toURI());
+		File rooms = new File(getClass().getClassLoader().getResource(BACKUP_ROOT + "room/rooms.xml").toURI());
 		backupImport.importRoomGroups(rooms.getParentFile());
 	}
 }

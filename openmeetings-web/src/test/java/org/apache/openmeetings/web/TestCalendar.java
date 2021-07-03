@@ -38,12 +38,12 @@ import com.googlecode.wicket.jquery.ui.calendar.CalendarView;
 
 import de.agilecoders.wicket.core.markup.html.bootstrap.navbar.Navbar;
 
-public class TestCalendar extends AbstractWicketTester {
+class TestCalendar extends AbstractWicketTester {
 	private static final String PATH_APPOINTMENT_DLG = String.format("%s:appointment", PATH_CHILD);
 	private static final String PATH_APPOINTMENT_DLG_FRM = String.format("%s:appForm", PATH_APPOINTMENT_DLG);
 
 	@Test
-	public void testEventCreate() throws OmException {
+	void testEventCreate() throws OmException {
 		testArea(regularUsername, p -> {
 			Navbar menu = (Navbar)p.get(PATH_MENU);
 			assertNotNull(menu);

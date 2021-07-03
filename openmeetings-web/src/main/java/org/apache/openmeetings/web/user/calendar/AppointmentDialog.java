@@ -18,10 +18,11 @@
  */
 package org.apache.openmeetings.web.user.calendar;
 
-import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_MYROOMS_ENABLED;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.isMyRoomsEnabled;
 import static org.apache.openmeetings.web.app.WebSession.getRights;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelDangerConfirm;
+import static org.apache.openmeetings.web.common.BasePanel.EVT_CHANGE;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelDangerConfirm;
 import static org.apache.openmeetings.web.util.CalendarWebHelper.getDate;
 import static org.apache.openmeetings.web.util.CalendarWebHelper.getDateTime;
 
@@ -51,13 +52,14 @@ import org.apache.openmeetings.db.util.FormatHelper;
 import org.apache.openmeetings.service.calendar.caldav.AppointmentManager;
 import org.apache.openmeetings.web.app.WebSession;
 import org.apache.openmeetings.web.common.GroupChoiceProvider;
-import org.apache.openmeetings.web.common.OmDateTimePicker;
 import org.apache.openmeetings.web.common.OmModalCloseButton;
+import org.apache.openmeetings.web.common.datetime.OmDateTimePicker;
 import org.apache.openmeetings.web.pages.MainPage;
 import org.apache.openmeetings.web.user.OmWysiwygToolbar;
 import org.apache.openmeetings.web.user.rooms.RoomEnterBehavior;
 import org.apache.openmeetings.web.util.RoomTypeDropDown;
 import org.apache.openmeetings.web.util.UserMultiChoice;
+import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormChoiceComponentUpdatingBehavior;
 import org.apache.wicket.ajax.form.AjaxFormComponentUpdatingBehavior;
@@ -108,9 +110,9 @@ public class AppointmentDialog extends Modal<Appointment> {
 	private final WebMarkupContainer sipContainer = new WebMarkupContainer("sip-container");
 	private final RadioGroup<InviteeType> rdi = new RadioGroup<>("inviteeType", Model.of(InviteeType.user));
 	private final Select2MultiChoice<Group> groups = new Select2MultiChoice<>("groups"
-			, new CollectionModel<Group>(new ArrayList<>())
+			, new CollectionModel<>(new ArrayList<>())
 			, new GroupChoiceProvider());
-	private final UserMultiChoice attendees = new UserMultiChoice("attendees", new CollectionModel<User>(new ArrayList<>()));
+	private final UserMultiChoice attendees = new UserMultiChoice("attendees", new CollectionModel<>(new ArrayList<>()));
 	private enum InviteeType {
 		user
 		, group
@@ -141,7 +143,7 @@ public class AppointmentDialog extends Modal<Appointment> {
 		size(Size.Large);
 
 		add(form = new AppointmentForm("appForm", getModel()));
-		addButton(save = new BootstrapAjaxButton("button", new ResourceModel("144"), form, Buttons.Type.Outline_Primary) {
+		addButton(save = new BootstrapAjaxButton(BUTTON_MARKUP_ID, new ResourceModel("144"), form, Buttons.Type.Outline_Primary) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -188,8 +190,6 @@ public class AppointmentDialog extends Modal<Appointment> {
 						MeetingMember mm = new MeetingMember();
 						mm.setUser(u);
 						mm.setDeleted(false);
-						mm.setInserted(a.getInserted());
-						mm.setUpdated(a.getUpdated());
 						mm.setAppointment(a);
 						mms.add(mm);
 					}
@@ -213,7 +213,7 @@ public class AppointmentDialog extends Modal<Appointment> {
 				target.add(feedback);
 			}
 		});
-		addButton(enterRoom = new BootstrapAjaxLink<>("button", null, Buttons.Type.Outline_Success, new ResourceModel("1282")) {
+		addButton(enterRoom = new BootstrapAjaxLink<>(BUTTON_MARKUP_ID, null, Buttons.Type.Outline_Success, new ResourceModel("lbl.enter")) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -222,12 +222,14 @@ public class AppointmentDialog extends Modal<Appointment> {
 			}
 		});
 		enterRoom.setOutputMarkupId(true).setOutputMarkupPlaceholderTag(true);
-		delete = new BootstrapAjaxLink<>("button", null, Buttons.Type.Outline_Danger, new ResourceModel("80")) {
+		enterRoom.add(AttributeModifier.append("data-dismiss", "modal"));
+		delete = new BootstrapAjaxLink<>(BUTTON_MARKUP_ID, null, Buttons.Type.Outline_Danger, new ResourceModel("80")) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
 			public void onClick(AjaxRequestTarget handler) {
 				deleteAppointment(handler);
+				AppointmentDialog.this.close(handler);
 			}
 		};
 		delete.setOutputMarkupId(true).setOutputMarkupPlaceholderTag(true);
@@ -286,7 +288,7 @@ public class AppointmentDialog extends Modal<Appointment> {
 				"groom"
 				, Model.of(new Room())
 				, getRoomList()
-				, new ChoiceRenderer<Room>("name", "id"));
+				, new ChoiceRenderer<>("name", "id"));
 		private DropDownChoice<OmCalendar> cals = new DropDownChoice<>(
 				"calendar",
 				new LoadableDetachableModel<List<? extends OmCalendar>>() {
@@ -301,7 +303,7 @@ public class AppointmentDialog extends Modal<Appointment> {
 						return apptManager.getCalendars(getUserId());
 					}
 				},
-				new ChoiceRenderer<OmCalendar>("title", "id")
+				new ChoiceRenderer<>("title", "id")
 		);
 		private final WebMarkupContainer groupContainer = new WebMarkupContainer("groupContainer");
 
@@ -309,7 +311,7 @@ public class AppointmentDialog extends Modal<Appointment> {
 			super(id, model);
 			setOutputMarkupId(true);
 
-			myRoomsAllowed = cfgDao.getBool(CONFIG_MYROOMS_ENABLED, true);
+			myRoomsAllowed = isMyRoomsEnabled();
 			createRoom = myRoomsAllowed;
 		}
 
@@ -382,23 +384,13 @@ public class AppointmentDialog extends Modal<Appointment> {
 				, new Radio<>("group", Model.of(InviteeType.group))
 			);
 			if (showGroups) {
-				groups.add(new AjaxFormComponentUpdatingBehavior("change") {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onUpdate(AjaxRequestTarget target) {
-						// added to update model
-					}
-				}).setEnabled(false);
+				groups.add(AjaxFormComponentUpdatingBehavior.onUpdate(EVT_CHANGE, target -> {
+					// added to update model
+				})).setEnabled(false);
 			}
-			rdi.add(attendees.add(new AjaxFormComponentUpdatingBehavior("change") {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onUpdate(AjaxRequestTarget target) {
-						// added to update model
-					}
-				})
+			rdi.add(attendees.add(AjaxFormComponentUpdatingBehavior.onUpdate(EVT_CHANGE, target -> {
+					// added to update model
+				}))
 				, groupContainer.setVisible(showGroups)
 			);
 			rdi.add(new Radio<>("user", Model.of(InviteeType.user)));
@@ -409,7 +401,7 @@ public class AppointmentDialog extends Modal<Appointment> {
 			add(new WysiwygEditor("description", toolbar));
 
 			//room
-			add(new AjaxCheckBox("createRoom", new PropertyModel<Boolean>(this, "createRoom")) {
+			add(new AjaxCheckBox("createRoom", new PropertyModel<>(this, "createRoom")) {
 				private static final long serialVersionUID = 1L;
 
 				@Override
@@ -467,8 +459,8 @@ public class AppointmentDialog extends Modal<Appointment> {
 
 			groups.setLabel(new ResourceModel("126"));
 			add(new RequiredTextField<String>("title").setLabel(new ResourceModel("572")));
-			add(start.setLabel(new ResourceModel("570")).setRequired(true)
-					, end.setLabel(new ResourceModel("571")).setRequired(true)
+			add(start.setLabel(new ResourceModel("label.start")).setRequired(true)
+					, end.setLabel(new ResourceModel("label.end")).setRequired(true)
 					, groom.setLabel(new ResourceModel("406")));
 			super.onInitialize();
 		}

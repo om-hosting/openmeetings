@@ -18,7 +18,7 @@
  */
 package org.apache.openmeetings.web.room.menu;
 
-import org.apache.openmeetings.db.dao.room.SipDao;
+import org.apache.openmeetings.core.sip.SipManager;
 import org.apache.openmeetings.web.common.OmModalCloseButton;
 import org.apache.openmeetings.web.room.RoomPanel;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -41,7 +41,7 @@ public class SipDialerDialog extends Modal<String> {
 	private final TextField<String> number = new TextField<>("number", Model.of(""));
 	private final RoomPanel room;
 	@SpringBean
-	private SipDao sipDao;
+	private SipManager sipDao;
 
 	public SipDialerDialog(String id, RoomPanel room) {
 		super(id);
@@ -69,7 +69,20 @@ public class SipDialerDialog extends Modal<String> {
 		};
 		form.setDefaultButton(ab);
 		add(feedback.setOutputMarkupId(true), form.add(number, ab));
-		addButton(new BootstrapAjaxButton("button", new ResourceModel("1448"), form, Buttons.Type.Outline_Primary) {
+		addButton(new BootstrapAjaxButton(BUTTON_MARKUP_ID, new ResourceModel("label.hangup"), form, Buttons.Type.Outline_Danger) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			protected void onSubmit(AjaxRequestTarget target) {
+				sipDao.hangup(room.getRoom());
+			}
+
+			@Override
+			protected void onError(AjaxRequestTarget target) {
+				SipDialerDialog.this.onError(target);
+			}
+		});
+		addButton(new BootstrapAjaxButton(BUTTON_MARKUP_ID, new ResourceModel("1448"), form, Buttons.Type.Outline_Primary) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -92,6 +105,5 @@ public class SipDialerDialog extends Modal<String> {
 
 	protected void onSubmit(AjaxRequestTarget target) {
 		sipDao.joinToConfCall(number.getModelObject(), room.getRoom());
-		// close ?
 	}
 }

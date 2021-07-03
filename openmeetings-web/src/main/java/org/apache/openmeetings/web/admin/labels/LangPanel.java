@@ -20,7 +20,7 @@ package org.apache.openmeetings.web.admin.labels;
 
 import static java.time.Duration.ZERO;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.ATTR_CLASS;
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelDangerConfirm;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelDangerConfirm;
 import static org.apache.wicket.request.resource.ContentDisposition.ATTACHMENT;
 
 import java.io.IOException;
@@ -46,6 +46,7 @@ import org.apache.wicket.ajax.AjaxEventBehavior;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormSubmitBehavior;
 import org.apache.wicket.ajax.markup.html.AjaxLink;
+import org.apache.wicket.authroles.authorization.strategies.role.annotations.AuthorizeInstantiation;
 import org.apache.wicket.extensions.ajax.AjaxDownloadBehavior;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
@@ -72,6 +73,7 @@ import de.agilecoders.wicket.extensions.markup.html.bootstrap.icon.FontAwesome5I
  * @author solomax, swagner
  *
  */
+@AuthorizeInstantiation({"ADMIN", "ADMIN_LABEL"})
 public class LangPanel extends AdminBasePanel {
 	private static final long serialVersionUID = 1L;
 	private static final Logger log = LoggerFactory.getLogger(LangPanel.class);
@@ -93,7 +95,6 @@ public class LangPanel extends AdminBasePanel {
 		language = new AbstractMap.SimpleEntry<>(1L, Locale.ENGLISH);
 
 		final LabelsForm form = new LabelsForm("form", this, new StringLabel(null, null));
-		form.setNewVisible(true);
 		add(form);
 
 		final SearchableDataView<StringLabel> dataView = new SearchableDataView<>(
@@ -118,16 +119,11 @@ public class LangPanel extends AdminBasePanel {
 				final StringLabel fv = item.getModelObject();
 				item.add(new Label("key"));
 				item.add(new Label("value"));
-				item.add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						form.setModelObject(fv);
-						form.setNewVisible(false);
-						target.add(form, listContainer);
-					}
-				});
+				item.add(AjaxEventBehavior.onEvent(EVT_CLICK, target -> {
+					form.setModelObject(fv);
+					form.setNewRecordVisible(false);
+					target.add(form, listContainer);
+				}));
 				item.add(AttributeModifier.append(ATTR_CLASS, getRowClass(fv.getId(), form.getModelObject().getId())));
 			}
 		};

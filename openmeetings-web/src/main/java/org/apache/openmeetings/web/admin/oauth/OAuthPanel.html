@@ -21,7 +21,7 @@
 <!DOCTYPE html>
 <html xmlns:wicket="http://wicket.apache.org">
 <wicket:extend>
-	<div class="adminPanelColumnTable">
+	<div class="adminPanelColumnTable col-6">
 		<div class="adminNav" wicket:id="navigator">[dataview navigator]</div>
 		<table class="list-table table-striped table-hover">
 			<thead>
@@ -38,7 +38,7 @@
 			</tbody>
 		</table>
 	</div>
-	<div class="adminPanelColumnForm">
+	<div class="adminPanelColumnForm col-6">
 		<form wicket:id="form" class="adminForm">
 			<div class="actions" wicket:id="buttons"></div>
 			<div class="scrollcontent" id="adminForm">
@@ -57,11 +57,11 @@
 						<input type="text" wicket:id="iconUrl" class="col-8"/>
 					</div>
 					<div class="formelement">
-						<label wicket:for="clientId" class="col-3 text-right"><wicket:message key="1576"/></label>
+						<label wicket:for="clientId" class="col-3 text-right">client_id</label>
 						<input type="text" wicket:id="clientId" class="col-8"/>
 					</div>
 					<div class="formelement">
-						<label wicket:for="clientSecret" class="col-3 text-right"><wicket:message key="1577"/></label>
+						<label wicket:for="clientSecret" class="col-3 text-right">client_secret</label>
 						<input type="text" wicket:id="clientSecret" class="col-8"/>
 					</div>
 					<div class="formelement">

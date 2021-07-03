@@ -26,16 +26,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.openmeetings.db.entity.server.OAuthServer;
 import org.apache.wicket.util.string.Strings;
 import org.junit.jupiter.api.Test;
 
-public class TestOAuthUser {
+class TestOAuthUser {
 	@Test
-	public void firstLevel() {
+	void firstLevel() {
 		OAuthServer server = new OAuthServer()
 				.addMapping(PARAM_LOGIN, "id")
 				.addMapping(PARAM_EMAIL, "email")
@@ -52,7 +51,7 @@ public class TestOAuthUser {
 	}
 
 	@Test
-	public void secondLevel() {
+	void secondLevel() {
 		OAuthServer server = new OAuthServer()
 				.addMapping(PARAM_LOGIN, "uid")
 				.addMapping(PARAM_EMAIL, "email")
@@ -76,7 +75,7 @@ public class TestOAuthUser {
 	}
 
 	@Test
-	public void secondLevel1() {
+	void secondLevel1() {
 		OAuthServer server = new OAuthServer()
 				.addMapping(PARAM_LOGIN, "username")
 				.addMapping(PARAM_EMAIL, "email")
@@ -93,11 +92,57 @@ public class TestOAuthUser {
 	}
 
 	@Test
-	public void map() {
-		Map<String, String> umap = new HashMap<>();
-		umap.put("login", "abc");
-		umap.put("email", "abc@local");
-		OAuthUser user = new OAuthUser(umap);
+	void thirdLevel() {
+		OAuthServer server = new OAuthServer()
+				.addMapping(PARAM_LOGIN, "id")
+				.addMapping(PARAM_EMAIL, "email")
+				.addMapping(PARAM_FNAME, "display-name");
+		OAuthUser user = new OAuthUser("{\n" +
+				"    \"ocs\": {\n" +
+				"        \"meta\": {\n" +
+				"            \"status\": \"ok\",\n" +
+				"            \"statuscode\": 200,\n" +
+				"            \"message\": \"OK\"\n" +
+				"        },\n" +
+				"        \"data\": {\n" +
+				"            \"storageLocation\": \"xxxxx\",\n" +
+				"            \"id\": \"xxxxx\",\n" +
+				"            \"lastLogin\": 1584799957000,\n" +
+				"            \"backend\": \"Database\",\n" +
+				"            \"subadmin\": [],\n" +
+				"            \"quota\": {\n" +
+				"                \"free\": 183035547648,\n" +
+				"                \"used\": 10244,\n" +
+				"                \"total\": 183035557892,\n" +
+				"                \"relative\": 0,\n" +
+				"                \"quota\": -3\n" +
+				"            },\n" +
+				"            \"email\": \"xxxxxx@xxx.x\",\n" +
+				"            \"phone\": \"\",\n" +
+				"            \"address\": \"\",\n" +
+				"            \"website\": \"\",\n" +
+				"            \"twitter\": \"\",\n" +
+				"            \"groups\": [\n" +
+				"                \"xxxxxx\"\n" +
+				"            ],\n" +
+				"            \"language\": \"en\",\n" +
+				"            \"locale\": \"\",\n" +
+				"            \"backendCapabilities\": {\n" +
+				"                \"setDisplayName\": true,\n" +
+				"                \"setPassword\": true\n" +
+				"            },\n" +
+				"            \"display-name\": \"xxxxx\"\n" +
+				"        }\n" +
+				"    }\n" +
+				"}", server);
+		assertEquals("xxxxx", user.getLogin(), "Login should be correct");
+	}
+
+	@Test
+	void map() {
+		OAuthUser user = new OAuthUser(Map.of(
+				"login", "abc"
+				, "email", "abc@local"));
 		assertEquals("abc", user.getLogin(), "Login should be correct");
 		assertEquals("abc@local", user.getEmail(), "Email should be correct");
 		assertNull(user.getUserData().get(PARAM_FNAME), "First name should be empty");

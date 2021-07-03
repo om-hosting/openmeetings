@@ -22,12 +22,11 @@
 <html xmlns:wicket="http://wicket.apache.org">
 <wicket:panel>
 	<!-- TODO design should be changed in the future -->
-	<div class="h-100 overflow-y-auto">
+	<div class="profile-panel">
 		<table class="messages">
 			<tr>
 				<td class="side left">
-					<div class="email new btn btn-sm btn-outline-primary
-					" onclick="privateMessage();" wicket:message="title:1208">
+					<div class="email new btn btn-sm btn-outline-primary" wicket:message="title:1208">
 						<i class="fas fa-envelope"></i>
 						<wicket:message key="1207"/>
 					</div>
@@ -61,7 +60,7 @@
 					<table id="messagesTable" class="list-table small full-width">
 						<thead>
 							<tr>
-								<th class="col-1"><span wicket:id="orderById"></span><wicket:message key="1205"/></th>
+								<th class="col-1"><span wicket:id="orderById"></span>&nbsp;</th>
 								<th class="col-6"><span wicket:id="orderByFrom"></span><wicket:message key="1202"/></th>
 								<th class="col-3"><span wicket:id="orderBySubject"></span><wicket:message key="215"/></th>
 								<th class="col-2"><span wicket:id="orderBySend"></span><wicket:message key="218"/></th>
@@ -108,12 +107,12 @@
 								<tr>
 									<td>
 										<button class="btn btn-outline-primary" wicket:id="enter">
-											<wicket:message key="1282"/>
+											<wicket:message key="lbl.enter"/>
 										</button>
 									</td>
 									<td>
-										<div class="d-inline-block"><wicket:message key="570" /></div><span wicket:id="start"></span><br/>
-										<div class="d-inline-block"><wicket:message key="571" /></div><span wicket:id="end"></span>
+										<div class="d-inline-block"><wicket:message key="label.start" /></div><span wicket:id="start"></span><br/>
+										<div class="d-inline-block"><wicket:message key="label.end" /></div><span wicket:id="end"></span>
 									</td>
 								</tr>
 							</table>

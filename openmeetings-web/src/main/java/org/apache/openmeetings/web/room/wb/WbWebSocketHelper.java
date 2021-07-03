@@ -18,12 +18,14 @@
  */
 package org.apache.openmeetings.web.room.wb;
 
+import static org.apache.openmeetings.core.util.WebSocketHelper.alwaysTrue;
+import static org.apache.openmeetings.core.util.WebSocketHelper.publish;
+import static org.apache.openmeetings.core.util.WebSocketHelper.sendRoom;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.PARAM_SRC;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.PARAM__SRC;
 
 import java.util.function.Predicate;
 
-import org.apache.openmeetings.core.util.WebSocketHelper;
 import org.apache.openmeetings.db.entity.basic.Client;
 import org.apache.openmeetings.db.entity.file.BaseFileItem;
 import org.apache.openmeetings.util.NullStringer;
@@ -40,24 +42,29 @@ import org.apache.wicket.resource.FileSystemResourceReference;
 
 import com.github.openjson.JSONObject;
 
-public class WbWebSocketHelper extends WebSocketHelper {
+public class WbWebSocketHelper {
 	public static final String PARAM_OBJ = "obj";
 	private static final String PARAM__POSTER = "_poster";
 
-	public static void send(IClusterWsMessage _m) {
-		if (_m instanceof WsMessageWb) {
-			WsMessageWb m = (WsMessageWb)_m;
+	private WbWebSocketHelper() {
+		// denied
+	}
+
+	public static boolean send(IClusterWsMessage inMsg) {
+		if (inMsg instanceof WsMessageWb) {
+			WsMessageWb m = (WsMessageWb)inMsg;
 			if (m.getUid() == null) {
 				sendWbAll(m.getRoomId(), m.getMeth(), m.getObj(), false);
 			} else {
 				sendWbOthers(m.getRoomId(), m.getMeth(), m.getObj(), m.getUid(), false);
 			}
-		} else if (_m instanceof WsMessageWbFile) {
-			WsMessageWbFile m = (WsMessageWbFile)_m;
+			return true;
+		} else if (inMsg instanceof WsMessageWbFile) {
+			WsMessageWbFile m = (WsMessageWbFile)inMsg;
 			sendWbFile(m.getRoomId(), m.getWbId(), m.getRoomUid(), m.getFile(), m.getFileItem(), false);
-		} else {
-			WebSocketHelper.send(_m);
+			return true;
 		}
+		return false;
 	}
 
 	public static void sendWbAll(Long roomId, WbAction meth, JSONObject obj) {
@@ -68,7 +75,7 @@ public class WbWebSocketHelper extends WebSocketHelper {
 		if (publish) {
 			publish(new WsMessageWb(roomId, meth, obj, null));
 		}
-		sendWb(roomId, meth, obj, null);
+		sendWb(roomId, meth, obj, alwaysTrue());
 	}
 
 	public static void sendWbOthers(Long roomId, WbAction meth, JSONObject obj, final String uid) {
@@ -96,13 +103,13 @@ public class WbWebSocketHelper extends WebSocketHelper {
 		return rc.getUrlRenderer().renderContextRelativeUrl(rc.mapUrlFor(handler).toString());
 	}
 
-	public static JSONObject addFileUrl(String ruid, JSONObject _file, BaseFileItem fi, Client c) {
-		JSONObject file = new JSONObject(_file.toString(new NullStringer()));
+	public static JSONObject addFileUrl(String ruid, JSONObject inFile, BaseFileItem fi, Client c) {
+		JSONObject file = new JSONObject(inFile.toString(new NullStringer()));
 		final FileSystemResourceReference ref;
 		final PageParameters pp = new PageParameters()
 				.add("id", fi.getId())
 				.add("ruid", ruid)
-				.add("wuid", _file.optString("uid"));
+				.add("wuid", inFile.optString("uid"));
 		if (c != null) {
 			pp.add("uid", c.getUid());
 		}
@@ -136,16 +143,13 @@ public class WbWebSocketHelper extends WebSocketHelper {
 
 	//This is required cause WebSocketHelper will send message async
 	private static String patchUrl(String url, Client c) {
-		return String.format("%s&uid=%s", url, c.getUid());
+		return url + "&uid=" + c.getUid();
 	}
 
-	private static JSONObject patchUrls(BaseFileItem fi, Client c, JSONObject _f) {
-		JSONObject f = new JSONObject(_f.toString()); // deep copy to ensure thread safety
+	private static JSONObject patchUrls(BaseFileItem fi, Client c, JSONObject inFile) {
+		JSONObject f = new JSONObject(inFile.toString()); // deep copy to ensure thread safety
 		switch (fi.getType()) {
 			case VIDEO:
-				f.put(PARAM__SRC, patchUrl(f.getString(PARAM__SRC), c));
-				f.put(PARAM__POSTER, patchUrl(f.getString(PARAM__POSTER), c));
-				break;
 			case RECORDING:
 				f.put(PARAM__SRC, patchUrl(f.getString(PARAM__SRC), c));
 				f.put(PARAM__POSTER, patchUrl(f.getString(PARAM__POSTER), c));
@@ -164,21 +168,21 @@ public class WbWebSocketHelper extends WebSocketHelper {
 		if (publish) {
 			publish(new WsMessageWbFile(roomId, wbId, ruid, file, fi));
 		}
-		final JSONObject _f = addFileUrl(ruid, file, fi, null);
-		WebSocketHelper.sendRoom(
+		final JSONObject f = addFileUrl(ruid, file, fi, null);
+		sendRoom(
 				roomId
 				, new JSONObject().put("type", "wb")
-				, null
-				, (o, c) -> o.put("func", WbAction.createObj.name())
-							.put("param", getObjWbJson(wbId, patchUrls(fi, c, _f))));
+				, alwaysTrue()
+				, (o, c) -> o.put("func", WbAction.CREATE_OBJ.jsName())
+							.put("param", getObjWbJson(wbId, patchUrls(fi, c, f))));
 	}
 
 	private static void sendWb(Long roomId, WbAction meth, JSONObject obj, Predicate<Client> check) {
-		WebSocketHelper.sendRoom(
+		sendRoom(
 				roomId
 				, new JSONObject().put("type", "wb")
 				, check
-				, (o, c) -> o.put("func", meth.name())
+				, (o, c) -> o.put("func", meth.jsName())
 							.put("param", obj)
 			);
 	}

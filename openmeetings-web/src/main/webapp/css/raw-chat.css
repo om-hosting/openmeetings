@@ -13,6 +13,9 @@
 #chat {
 	height: calc(100% - 20px);
 }
+#chat .chat-toolbar.btn-toolbar .dropdown-menu {
+	min-width: unset;
+}
 #chat .chat-toolbar.btn-toolbar .dropdown-menu.btns-only li {
 	display: inline-block;
 }
@@ -37,6 +40,21 @@
 	width: 70px;
 	padding-left: 5px;
 }
+#chatPanel #chatPopup .control.block i::before {
+	content: "\f107";
+}
+#chatPanel.closed #chatPopup .control.block i::before {
+	content: "\f106";
+}
+.main.room #chatPanel #chatPopup .control.block i::before {
+	content: "\f105";
+}
+.main.room #chatPanel.closed #chatPopup .control.block i::before {
+	content: "\f104";
+}
+#chat .messageArea .msg-row.need-moderation {
+	background-color: var(--warning);
+}
 #chat .messageArea .time {
 	margin-right: 5px;
 	font-style: italic;
@@ -57,6 +75,7 @@
 #chat .messageArea .icons div {
 	display: inline-block;
 	vertical-align: super;
+	margin-right: 2px;
 }
 html[dir="rtl"] #chat .messageArea .icons {
 	left: initial;
@@ -100,6 +119,7 @@ html[dir="rtl"] #chat .messageArea .icons {
 }
 #chat .chat-tool-icon, #chat .chat.btn {
 	font-size: 1.1em;
+	max-height: var(--chat-tools-height);
 }
 #chat .sound.chat-tool-icon i::before {
 	content: '\f028';
@@ -123,8 +143,7 @@ html[dir="rtl"] #chat .messageArea .icons {
 	margin-left: 0;
 }
 #chat .tool-container {
-	max-height: var(--chat-tools-height);
-	height: var(--chat-tools-height);
+	min-height: var(--chat-tools-height);
 }
 /* room mode */
 .main.room #chatPanel {

@@ -22,7 +22,7 @@
 	<parent>
 		<groupId>org.apache.openmeetings</groupId>
 		<artifactId>openmeetings-parent</artifactId>
-		<version>5.0.0-M4-SNAPSHOT</version>
+		<version>6.1.0-SNAPSHOT</version>
 		<relativePath>..</relativePath>
 	</parent>
 	<artifactId>openmeetings-server</artifactId>
@@ -112,13 +112,14 @@
 				<assembly.finalName>server</assembly.finalName>
 				<assembly.descriptor>unpacked</assembly.descriptor>
 				<src.pack.skip>true</src.pack.skip>
+				<logback.console><![CDATA[<appender-ref ref="CONSOLE" />]]></logback.console>
 			</properties>
 		</profile>
 		<profile>
 			<id>prepare-web-server</id>
 			<activation>
 				<file>
-					<missing>web-server/apache-tomcat-9.0.31.tar.gz</missing> <!-- TODO should be in-sync with global property -->
+					<missing>web-server/apache-tomcat-9.0.48.tar.gz</missing> <!-- TODO should be in-sync with global property -->
 				</file>
 			</activation>
 			<build>

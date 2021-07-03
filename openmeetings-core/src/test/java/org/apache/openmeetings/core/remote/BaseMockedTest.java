@@ -20,34 +20,62 @@
 package org.apache.openmeetings.core.remote;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.nullable;
-import static org.mockito.Mockito.when;
-import static org.powermock.api.mockito.PowerMockito.mockStatic;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.withSettings;
+import static org.mockito.internal.util.collections.Sets.newMockSafeHashSet;
 
+import java.lang.reflect.Field;
+import java.util.Locale;
+import java.util.Set;
+
+import javax.inject.Inject;
+
+import org.apache.openmeetings.IApplication;
 import org.apache.openmeetings.core.util.WebSocketHelper;
-import org.junit.Before;
-import org.junit.runner.RunWith;
+import org.apache.openmeetings.db.dao.label.LabelDao;
+import org.apache.openmeetings.db.entity.basic.IWsClient;
+import org.apache.openmeetings.db.entity.label.OmLanguage;
+import org.apache.openmeetings.db.util.ApplicationHelper;
+import org.apache.wicket.injection.Injector;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.kurento.client.KurentoClient;
-import org.kurento.client.KurentoConnectionListener;
+import org.kurento.client.MediaPipeline;
+import org.kurento.client.MediaProfileSpecType;
+import org.kurento.client.PlayerEndpoint;
+import org.kurento.client.RecorderEndpoint;
 import org.kurento.client.ServerManager;
+import org.kurento.client.WebRtcEndpoint;
 import org.kurento.client.internal.TransactionImpl;
 import org.kurento.client.internal.client.RomManager;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.MockedStatic;
 import org.mockito.Spy;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.internal.configuration.injection.scanner.MockScanner;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.openjson.JSONObject;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({KurentoClient.class, WebSocketHelper.class, AbstractStream.class})
+@ExtendWith(MockitoExtension.class)
 public class BaseMockedTest {
+	private static final Logger log = LoggerFactory.getLogger(BaseMockedTest.class);
 	@Mock
 	protected RomManager romManager;
 	@Mock
 	protected ServerManager kServerManager;
+	@Spy
+	@InjectMocks
+	protected StreamProcessorActions streamProcessorActions;
 	@Mock
 	protected KurentoClient client;
 	@Spy
@@ -62,14 +90,71 @@ public class BaseMockedTest {
 
 	protected final static JSONObject MSG_BASE = new JSONObject();
 
-	@Before
+	@BeforeEach
 	public void setup() {
-		MockitoAnnotations.initMocks(this);
-		mockStatic(KurentoClient.class);
-		mockStatic(WebSocketHelper.class);
-		when(client.getServerManager()).thenReturn(kServerManager);
-		when(KurentoClient.create(nullable(String.class), any(KurentoConnectionListener.class))).thenReturn(client);
-		when(client.beginTransaction()).thenReturn(new TransactionImpl(romManager));
+		lenient().doReturn(kServerManager).when(client).getServerManager();
+		lenient().doReturn(new TransactionImpl(romManager)).when(client).beginTransaction();
 		handler.init();
+	}
+
+	void runWrapped(Runnable task) {
+		try (MockedStatic<AbstractStream> streamMock = mockStatic(AbstractStream.class);
+				MockedStatic<WebSocketHelper> wsHelperMock = mockStatic(WebSocketHelper.class);
+				MockedStatic<LabelDao> labelMock = mockStatic(LabelDao.class);
+				MockedStatic<ApplicationHelper> appHelpMock = mockStatic(ApplicationHelper.class);
+				MockedStatic<Injector> injectMock = mockStatic(Injector.class)
+				)
+		{
+			Set<Object> mocks = newMockSafeHashSet();
+			new MockScanner(this, BaseMockedTest.class).addPreparedMocks(mocks);
+			new MockScanner(this, this.getClass()).addPreparedMocks(mocks);
+			wsHelperMock.when(() -> WebSocketHelper.sendClient(any(IWsClient.class), any(JSONObject.class))).thenAnswer(new Answer<Void>() {
+				@Override
+				public Void answer(InvocationOnMock invocation) throws Throwable {
+					return null;
+				}
+			});
+			streamMock.when(() -> AbstractStream.createWebRtcEndpoint(any(MediaPipeline.class), anyBoolean(), any())).thenReturn(mock(WebRtcEndpoint.class));
+			streamMock.when(() -> AbstractStream.createRecorderEndpoint(any(MediaPipeline.class), anyString(), any(MediaProfileSpecType.class))).thenReturn(mock(RecorderEndpoint.class));
+			streamMock.when(() -> AbstractStream.createPlayerEndpoint(any(MediaPipeline.class), anyString())).thenReturn(mock(PlayerEndpoint.class));
+
+			labelMock.when(() -> LabelDao.getLanguage(any(Long.class))).thenReturn(new OmLanguage(1L, Locale.ENGLISH));
+			appHelpMock.when(() -> ApplicationHelper.ensureApplication(any(Long.class))).thenReturn(mock(IApplication.class));
+			Injector injector = mock(Injector.class, withSettings().lenient());
+			doAnswer(new Answer<Void>() {
+				@Override
+				public Void answer(InvocationOnMock invocation) throws Throwable {
+					Object o = invocation.getArgument(0);
+					if (forInjection(o)) {
+						inject(o, mocks);
+					}
+					return null;
+				}
+			}).when(injector).inject(any());
+			injectMock.when(() -> Injector.get()).thenReturn(injector);
+			task.run();
+		}
+	}
+
+	private boolean forInjection(Object o) {
+		return o instanceof KRoom || o instanceof KStream || o instanceof KTestStream;
+	}
+
+	private void inject(Object o, Set<Object> mocks) {
+		for (Field f : o.getClass().getDeclaredFields()) {
+			if (f.isAnnotationPresent(Inject.class)) {
+				mocks.stream()
+						.filter(mock -> f.getType().isAssignableFrom(mock.getClass()))
+						.findAny()
+						.ifPresent(mock -> {
+							try {
+								f.setAccessible(true);
+								f.set(o, mock);
+							} catch (Exception e) {
+								log.error("Fail to set mock {} {}", f, mock);
+							}
+						});
+			}
+		}
 	}
 }

@@ -138,13 +138,13 @@ public class FolderPanel extends Panel implements IDraggableListener, IDroppable
 		});
 	}
 
-	private void moveAll(final FileTreePanel treePanel, AjaxRequestTarget target, BaseFileItem p) {
+	private void moveAll(AjaxRequestTarget target, BaseFileItem p) {
 		for (Entry<String, BaseFileItem> e : treePanel.getSelected().entrySet()) {
-			move(treePanel, target, p, e.getValue());
+			move(target, p, e.getValue());
 		}
 	}
 
-	private void move(final FileTreePanel treePanel, AjaxRequestTarget target, BaseFileItem p, BaseFileItem f) {
+	private void move(AjaxRequestTarget target, BaseFileItem p, BaseFileItem f) {
 		Long pid = p.getId();
 		if (pid != null && pid.equals(f.getId())) {
 			return;
@@ -203,15 +203,7 @@ public class FolderPanel extends Panel implements IDraggableListener, IDroppable
 					break;
 				case VIDEO:
 				case RECORDING:
-				{
-					style.append("recording ");
-					if (f instanceof Recording) {
-						Status st = ((Recording)f).getStatus();
-						if (Status.RECORDING == st || Status.CONVERTING == st) {
-							style.append("processing ");
-						}
-					}
-				}
+					setVideoStyle(f, style);
 					break;
 				case PRESENTATION:
 					style.append(CSS_CLASS_FILE).append("doc ");
@@ -226,6 +218,16 @@ public class FolderPanel extends Panel implements IDraggableListener, IDroppable
 		String cls = f instanceof Recording ? "recorditem " : "fileitem ";
 		style.append(f.isReadOnly() ? "readonlyitem " : cls);
 		return style;
+	}
+
+	private void setVideoStyle(final BaseFileItem f, StringBuilder style) {
+		style.append("recording ");
+		if (f instanceof Recording) {
+			Status st = ((Recording)f).getStatus();
+			if (Status.RECORDING == st || Status.CONVERTING == st) {
+				style.append("processing ");
+			}
+		}
 	}
 
 	@Override
@@ -270,9 +272,9 @@ public class FolderPanel extends Panel implements IDraggableListener, IDroppable
 			BaseFileItem p = (BaseFileItem)getDefaultModelObject();
 			BaseFileItem f = (BaseFileItem)o;
 			if (treePanel.isSelected(f)) {
-				moveAll(treePanel, target, p);
+				moveAll(target, p);
 			} else {
-				move(treePanel, target, p, f);
+				move(target, p, f);
 			}
 			treePanel.updateNode(target, p);
 		}

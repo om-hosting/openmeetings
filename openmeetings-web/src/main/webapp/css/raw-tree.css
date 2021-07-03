@@ -1,19 +1,39 @@
 /* Licensed under the Apache License, Version 2.0 (the "License") http://www.apache.org/licenses/LICENSE-2.0 */
 .file-tree {
 	vertical-align: top;
-	max-width: 350px;
 	height: 100%;
 	width: 100%;
 	display: inline-block;
 }
 .file-tree .trees {
 	height: calc(100% - var(--tree-header-height) - var(--tree-footer-height));
-	overflow-x: hidden;
+	width: var(--sidebar-width);
+	overflow-x: auto;
 	overflow-y: auto;
 }
 .file-tree .trees #tree-anchor {
 	height: 2px;
 	width: 2px;
+}
+.trees .tree-theme-windows
+, .trees .tree-theme-windows > :first-child
+, .trees .tree-theme-windows .tree-branch
+, .trees .tree-theme-windows .tree-branch .tree-node
+, .trees .tree-theme-windows .tree-subtree .tree-branch
+, .trees .tree-theme-windows .tree-node .om-icon
+, .trees .tree-theme-windows .tree-node .om-icon .file.item
+, .trees .tree-theme-windows .tree-node .om-icon .file.item .name
+, .trees .tree-theme-windows .tree-node .om-icon .file.item .name span
+{
+	width: 100%;
+}
+.trees .tree-theme-windows div.tree-subtree
+, .trees .tree-theme-windows .tree-node .om-icon
+{
+	width: calc(100% - 20px);
+}
+.trees .tree-theme-windows .tree-node .om-icon.broken .file.item .name {
+	width: calc(100% - 32px);
 }
 .file-tree .footer {
 	height: var(--tree-footer-height);
@@ -23,6 +43,10 @@
 }
 .file-tree .footer .sizes .size {
 	padding-left: 5px;
+}
+.file-tree .footer .buttons .other-buttons {
+	display: inline-block;
+	margin: 0 2px;
 }
 .trash-toolbar {
 	font-weight: bold;
@@ -72,16 +96,18 @@
 	position: absolute;
 	left: 3px;
 }
-.trees .om-icon span {
-	white-space: nowrap;
-	padding-right: 20px;
-	vertical-align: top;
-}
 .trees .tree-node {
 	white-space: nowrap;
 }
 .file-tree .trees .om-icon.active {
 	background-color: var(--info);
+}
+.file-tree .trees .om-icon i {
+	display: none;
+	position: absolute;
+	bottom: 1px;
+	left: 5px;
+	font-size: .8em;
 }
 .refresh.om-icon::before {
 	content: '\f2f1';
@@ -101,8 +127,8 @@
 .broken.om-icon::before {
 	color: var(--danger);
 }
-.processing.om-icon {
-	color: var(--info);
+.file-tree .trees .processing.om-icon i {
+	display: block;
 }
 .file.om-icon, .recording.om-icon {
 	padding-left: 34px;
@@ -148,8 +174,6 @@
 .file.item .name, .file.item .name span {
 	color: black;
 	display: block;
-	width: 230px;
-	max-width: 230px;
 	/* Required for text-overflow to do anything */
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -158,12 +182,14 @@
 .file.item .name {
 	padding-top: 10px;
 }
-.file.item .errors {
+.tree-node .file.item .errors {
 	position: absolute;
 	top: 0px;
-	right: 0px;
+	right: 1px;
 	width: 32px;
 	height: 32px;
+	margin: 0px;
+	padding: 0px;
 }
 .file.item .errors::before {
 	color: var(--warning);
@@ -189,4 +215,11 @@
 	font-family: monospace;
 	white-space: pre;
 	margin: 0;
+}
+.upload.om-icon {
+	margin-top: 0;
+}
+.upload.om-icon::before {
+	content: '\f574';
+	padding: 0 7px;
 }

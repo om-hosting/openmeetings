@@ -21,7 +21,7 @@
 <!DOCTYPE html>
 <html xmlns:wicket="http://wicket.apache.org">
 <wicket:extend>
-	<div class="adminPanelColumnTable rooms">
+	<div class="adminPanelColumnTable rooms col-6">
 		<div class="adminNav" wicket:id="navigator">[dataview navigator]</div>
 		<table class="list-table table-striped table-hover">
 			<thead>
@@ -40,17 +40,21 @@
 			</tbody>
 		</table>
 	</div>
-	<div class="adminPanelColumnForm">
+	<div class="adminPanelColumnForm col-6">
 		<form wicket:id="form" class="adminForm">
 			<div class="actions" wicket:id="buttons"></div>
 			<div class="scrollcontent" id="adminForm">
 
 				<!-- General -->
 				<fieldset>
-					<legend><wicket:message key="187" /></legend>
+					<legend><wicket:message key="lbl.general" /></legend>
 					<div class="formelement">
 						<label wicket:for="name" class="col-3 text-right"><wicket:message key="165" /></label>
 						<input type="text" wicket:id="name" class="col-8"/>
+					</div>
+					<div class="formelement">
+						<label wicket:for="tag" class="col-3 text-right"><wicket:message key="admin.group.form.tag" /></label>
+						<input type="text" wicket:id="tag" class="col-8"/>
 					</div>
 					<div class="formelement">
 						<label wicket:for="capacity" class="col-3 text-right"><wicket:message key="482" /></label>
@@ -67,6 +71,10 @@
 					<div class="formelement">
 						<label wicket:for="appointment" class="col-3 text-right"><wicket:message key="620" /></label>
 						<input type="checkbox" class="formcheckbox" wicket:id="appointment" />
+					</div>
+					<div class="formelement">
+						<label wicket:for="ownerId" class="col-3 text-right"><wicket:message key="1308" /></label>
+						<input type="text" wicket:id="ownerId" class="col-8" readonly="readonly"/>
 					</div>
 				</fieldset>
 
@@ -256,7 +264,7 @@
 									<th class="col-1 overflow-hidden" wicket:message="title:817"><wicket:message key="817" /></th>
 									<th class="col-1"><wicket:message key="188" /></th>
 									<th class="col-4"><wicket:message key="165" /></th>
-									<th class="col-5"><wicket:message key="510" /></th>
+									<th class="col-5"><wicket:message key="lbl.email" /></th>
 									<th class="col-1"><wicket:message key="275" /></th>
 								</tr>
 							</thead>
@@ -287,10 +295,6 @@
 					<div class="formelement">
 						<label wicket:for="pin" class="col-3 text-right"><wicket:message key="1004" /></label>
 						<input type="text" wicket:id="pin" class="col-8"/>
-					</div>
-					<div class="formelement">
-						<label wicket:for="ownerId" class="col-3 text-right"><wicket:message key="1308" /></label>
-						<input type="text" wicket:id="ownerId" class="col-8"/>
 					</div>
 					<div class="formelement">
 						<label wicket:for="sipEnabled" class="col-3 text-right"><wicket:message key="1538" /></label>

@@ -18,9 +18,9 @@
  */
 package org.apache.openmeetings.web.admin.oauth;
 
+import static org.apache.openmeetings.web.app.UserManager.getRedirectUri;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelDangerConfirm;
-import static org.apache.openmeetings.web.pages.auth.SignInPage.getRedirectUri;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelDangerConfirm;
 
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
@@ -98,18 +98,19 @@ public class OAuthForm extends AdminBaseForm<OAuthServer> {
 
 	@Override
 	protected void onInitialize() {
+		super.onInitialize();
 		add(new CheckBox("isEnabled"));
 		add(new RequiredTextField<String>("name").setLabel(new ResourceModel("165")));
 		add(new TextField<String>("iconUrl").setLabel(new ResourceModel("1575")));
-		add(new RequiredTextField<String>("clientId").setLabel(new ResourceModel("1576")));
-		add(new RequiredTextField<String>("clientSecret").setLabel(new ResourceModel("1577")));
+		add(new RequiredTextField<String>("clientId").setLabel(Model.of("client_id")));
+		add(new RequiredTextField<String>("clientSecret").setLabel(Model.of("client_secret")));
 		add(redirectUriText = (TextField<String>) new TextField<>("redirectUri", Model.of("")).setLabel(new ResourceModel("1587")));
 		add(new RequiredTextField<String>("requestKeyUrl").setLabel(new ResourceModel("1578")));
-		add(new DropDownChoice<>("requestTokenMethod", List.of(RequestTokenMethod.values()), new ChoiceRenderer<RequestTokenMethod>("name", "name")));
+		add(new DropDownChoice<>("requestTokenMethod", List.of(RequestTokenMethod.values()), new ChoiceRenderer<>("name", "name")));
 		add(new RequiredTextField<String>("requestTokenUrl").setLabel(new ResourceModel("1579")));
 		add(new RequiredTextField<String>("requestTokenAttributes").setLabel(new ResourceModel("1586")));
 		add(new RequiredTextField<String>("requestInfoUrl").setLabel(new ResourceModel("1580")));
-		add(new DropDownChoice<>("requestInfoMethod", List.of(RequestInfoMethod.values()), new ChoiceRenderer<RequestInfoMethod>("name", "name")));
+		add(new DropDownChoice<>("requestInfoMethod", List.of(RequestInfoMethod.values()), new ChoiceRenderer<>("name", "name")));
 		Form<Void> mappingForm = new Form<>("mappingForm");
 		final TextField<String> omAttr = new TextField<>("omAttr", Model.of(""));
 		final TextField<String> oauthAttr = new TextField<>("oauthAttr", Model.of(""));
@@ -129,7 +130,7 @@ public class OAuthForm extends AdminBaseForm<OAuthServer> {
 					}
 				}).setOutputMarkupId(true));
 		add(attrsContainer.add(updateMapping()).setOutputMarkupId(true));
-		super.onInitialize();
+		setNewRecordVisible(true);
 	}
 
 	private Component updateMapping() {
@@ -152,7 +153,7 @@ public class OAuthForm extends AdminBaseForm<OAuthServer> {
 		oauthDao.update(getModelObject(), getUserId());
 		OAuthServer oauthServer = oauthDao.get(getModelObject().getId());
 		this.setModelObject(oauthServer);
-		setNewVisible(false);
+		setNewRecordVisible(false);
 		target.add(this);
 		target.add(listContainer);
 	}

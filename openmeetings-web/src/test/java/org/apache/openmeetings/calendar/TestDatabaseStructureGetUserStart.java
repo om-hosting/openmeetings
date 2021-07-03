@@ -23,11 +23,11 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestDatabaseStructureGetUserStart extends AbstractJUnitDefaults {
+class TestDatabaseStructureGetUserStart extends AbstractJUnitDefaults {
 	private static final Logger log = LoggerFactory.getLogger(TestDatabaseStructureGetUserStart.class);
 
 	@Test
-	public void testAddingGroup() {
+	void testAddingGroup() {
 		try {
 			userDao.get(1L);
 		} catch (Exception err) {

@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 import org.apache.openmeetings.db.dao.IDataProviderDao;
 import org.apache.openmeetings.db.entity.label.OmLanguage;
 import org.apache.openmeetings.db.entity.label.StringLabel;
+import org.apache.openmeetings.db.util.XmlHelper;
 import org.apache.openmeetings.util.OmFileHelper;
 import org.apache.openmeetings.util.XmlExport;
 import org.apache.wicket.extensions.markup.html.repeater.util.SortParam;
@@ -72,6 +73,7 @@ public class LabelDao implements IDataProviderDao<StringLabel>{
 	private static final String KEY_ATTR = "key";
 	public static final String APP_RESOURCES_PREFIX = "Application";
 	public static final String APP_RESOURCES_SUFFIX = ".properties.xml";
+	private static final OmLanguage LNG_ENGLISH = new OmLanguage(1L, Locale.ENGLISH);
 	private static final LinkedHashMap<Long, OmLanguage> languages = new LinkedHashMap<>();
 	private static final ConcurrentHashMap<Locale, List<StringLabel>> labelCache = new ConcurrentHashMap<>();
 	private static final Set<String> keys = new HashSet<>();
@@ -81,7 +83,12 @@ public class LabelDao implements IDataProviderDao<StringLabel>{
 		Document d = XmlExport.createDocument();
 		Element r = XmlExport.createRoot(d, "language");
 		for (Entry<Long, OmLanguage> e : languages.entrySet()) {
-			r.addElement("lang").addAttribute("id", "" + e.getKey()).addAttribute("code", e.getValue().getLocale().toLanguageTag());
+			r.addElement("lang")
+				.addAttribute("id", "" + e.getKey())
+				.addAttribute("code", e.getValue().getLocale().toLanguageTag())
+				.addAttribute("tip", e.getValue().getTip())
+				.addAttribute("rangeStart", "" + e.getValue().getRangeStart())
+				.addAttribute("rangeStart", "" + e.getValue().getRangeEnd());
 		}
 		XmlExport.toXml(getLangFile(), d);
 	}
@@ -91,9 +98,9 @@ public class LabelDao implements IDataProviderDao<StringLabel>{
 		for (Entry<Long, OmLanguage> e : languages.entrySet()) {
 			id = e.getKey();
 		}
-		languages.put(id + 1, new OmLanguage(l));
+		languages.put(id + 1, new OmLanguage(id + 1, l));
 		storeLanguages();
-		labelCache.put(l, new ArrayList<StringLabel>());
+		labelCache.put(l, new ArrayList<>());
 	}
 
 	public static String getString(String key, long langId) {
@@ -105,8 +112,8 @@ public class LabelDao implements IDataProviderDao<StringLabel>{
 	}
 
 	public static void initLanguageMap() {
-		SAXReader reader = new SAXReader();
 		try {
+			SAXReader reader = XmlHelper.createSaxReader();
 			appClass = getAppClass();
 			Document document = reader.read(getLangFile());
 			Element root = document.getRootElement();
@@ -118,7 +125,11 @@ public class LabelDao implements IDataProviderDao<StringLabel>{
 				if (id == 3L) {
 					continue;
 				}
-				languages.put(id, new OmLanguage(Locale.forLanguageTag(code)));
+				languages.put(id, new OmLanguage(id, Locale.forLanguageTag(code))
+						.setTip(item.attributeValue("tip"))
+						.setRangeStart(Optional.ofNullable(item.attributeValue("rangeStart")).map(s -> s.charAt(0)).orElse('A'))
+						.setRangeEnd(Optional.ofNullable(item.attributeValue("rangeEnd")).map(s -> s.charAt(0)).orElse('Z'))
+					);
 			}
 		} catch (Exception e) {
 			log.error("Error while building language map");
@@ -206,19 +217,24 @@ public class LabelDao implements IDataProviderDao<StringLabel>{
 	}
 
 	public static OmLanguage getLanguage(Long id) {
-		OmLanguage l = id == null ? null : languages.get(id);
-		return l == null ? languages.get(1L) : l;
+		return languages.getOrDefault(id == null ? 1L : id, LNG_ENGLISH);
 	}
 
 	public static Locale getLocale(Long id) {
 		return getLanguage(id).getLocale();
 	}
 
+	public static OmLanguage getOmLanguage(Locale loc, Long def) {
+		Optional<OmLanguage> lang = languages.entrySet().stream()
+				.map(Entry::getValue)
+				.filter(l -> l.getLocale().equals(loc)
+						|| Locale.forLanguageTag(l.getLocale().getCountry()).equals(loc))
+				.findFirst();
+		return lang.orElse(getLanguage(def));
+	}
+
 	public static Long getLanguage(Locale loc, Long def) {
-		Optional<Long> lang = languages.entrySet().stream()
-				.filter(e -> e.getValue().getLocale().equals(loc))
-				.map(Entry::getKey).findFirst();
-		return lang.isPresent() ? lang.get() : def;
+		return getOmLanguage(loc, def).getId();
 	}
 
 	public static Set<Entry<Long, Locale>> getLanguages() {

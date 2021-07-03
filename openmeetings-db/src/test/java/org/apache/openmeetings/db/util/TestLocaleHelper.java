@@ -29,13 +29,13 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-public class TestLocaleHelper {
+class TestLocaleHelper {
 	private static final String COUNTRY_IT_LC = "it";
 	private static final String COUNTRY_IT = "IT";
 	private static final String COUNTRY_ITALY = "Italy";
 
 	@Test
-	public void testCountry() {
+	void testCountry() {
 		List<String> list = getCountries();
 		assertNotNull(list, "Country list shouldn't be null");
 		assertFalse(list.isEmpty(), "Country list shouldn't be empty");

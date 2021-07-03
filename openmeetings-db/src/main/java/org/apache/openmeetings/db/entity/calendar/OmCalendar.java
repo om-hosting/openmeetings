@@ -32,6 +32,8 @@ import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
@@ -47,21 +49,22 @@ import org.apache.openmeetings.db.entity.user.User;
 @NamedQuery(name = "getCalendars", query = "SELECT c FROM OmCalendar c WHERE c.deleted = false ORDER BY c.id")
 @NamedQuery(name = "getCalendarbyUser", query = "SELECT c FROM OmCalendar c"
 		+ " WHERE c.deleted = false AND c.owner.id = :userId AND c.syncType <> OmCalendar$SyncType.GOOGLE_CALENDAR "
-		+ "ORDER BY c.id")
+		+ " ORDER BY c.id")
 // OpenJPA has trouble with referencing Subclasses, thus java $ symbol is used
 // Comes from the OpenJPA Mailing List.
 @NamedQuery(name = "getGoogleCalendars", query = "SELECT c FROM OmCalendar c WHERE c.deleted = false AND c.owner.id = :userId "
 		+ "AND c.syncType = OmCalendar$SyncType.GOOGLE_CALENDAR ORDER BY c.id")
 @NamedQuery(name = "getAppointmentsbyCalendarinRange", query = "SELECT a FROM Appointment a "
 		+ "WHERE a.deleted = false "
-		+ "	AND ( "
-		+ "		(a.start BETWEEN :start AND :end) "
-		+ "		OR (a.end BETWEEN :start AND :end) "
-		+ "		OR (a.start < :start AND a.end > :end) "
-		+ "	)"
-		+ "	AND a.owner.id = :userId AND a.calendar.id = :calId  ")
+		+ "  AND ( "
+		+ "    (a.start BETWEEN :start AND :end) "
+		+ "      OR (a.end BETWEEN :start AND :end) "
+		+ "      OR (a.start < :start AND a.end > :end) "
+		+ "  )"
+		+ "  AND a.owner.id = :userId AND a.calendar.id = :calId")
 @NamedQuery(name = "getCalendarbyId", query = "SELECT c FROM OmCalendar c WHERE c.deleted = false AND c.id = :calId")
 @XmlRootElement(name = CALENDAR_NODE)
+@XmlAccessorType(XmlAccessType.FIELD)
 public class OmCalendar extends HistoricalEntity {
 	private static final long serialVersionUID = 1L;
 

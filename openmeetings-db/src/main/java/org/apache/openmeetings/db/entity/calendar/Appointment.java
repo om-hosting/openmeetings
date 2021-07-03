@@ -19,6 +19,7 @@
 package org.apache.openmeetings.db.entity.calendar;
 
 import static org.apache.openmeetings.db.bind.Constants.APPOINTMENT_NODE;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.getAppointmentPreStartMinutes;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -41,6 +42,8 @@ import javax.persistence.ManyToOne;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
@@ -68,34 +71,34 @@ import org.apache.openmeetings.db.entity.user.User;
 @NamedQuery(name="appointmentsInRange",
 	query="SELECT a FROM Appointment a "
 		+ "WHERE a.deleted = false "
-		+ "	AND ( "
-		+ "		(a.start BETWEEN :start AND :end) "
-		+ "		OR (a.end BETWEEN :start AND :end) "
-		+ "		OR (a.start < :start AND a.end > :end) "
-		+ "	)"
-		+ "	AND a.owner.id = :userId"
+		+ "  AND ( "
+		+ "    (a.start BETWEEN :start AND :end) "
+		+ "      OR (a.end BETWEEN :start AND :end) "
+		+ "      OR (a.start < :start AND a.end > :end) "
+		+ "    )"
+		+ "  AND a.owner.id = :userId"
 	)
 @NamedQuery(name="joinedAppointmentsInRange",
 	query="SELECT a FROM MeetingMember mm INNER JOIN mm.appointment a "
 		+ "WHERE mm.deleted = false AND mm.user.id <> a.owner.id AND mm.user.id = :userId "
-		+ "	AND a.id NOT IN (SELECT a.id FROM Appointment a WHERE a.owner.id = :userId)"
-		+ "	AND mm.connectedEvent = false " //connectedEvent is set for the MeetingMember if event is created from "Private Messages", it is weird
-		+ "	AND ( "
-		+ "		(a.start BETWEEN :start AND :end) "
-		+ "		OR (a.end BETWEEN :start AND :end) "
-		+ "		OR (a.start < :start AND a.end > :end) "
-		+ "	)"
+		+ "  AND a.id NOT IN (SELECT a.id FROM Appointment a WHERE a.owner.id = :userId)"
+		+ "  AND mm.connectedEvent = false " //connectedEvent is set for the MeetingMember if event is created from "Private Messages", it is weird
+		+ "  AND ( "
+		+ "    (a.start BETWEEN :start AND :end) "
+		+ "      OR (a.end BETWEEN :start AND :end) "
+		+ "      OR (a.start < :start AND a.end > :end) "
+		+ "  )"
 	)
 @NamedQuery(name="appointmentsInRangeRemind",
 	query="SELECT a FROM Appointment a "
 		//only ReminderType simple mail is concerned!
 		+ "WHERE a.deleted = false AND a.reminderEmailSend = false"
-		+ " AND (a.reminder <> :none) "
-		+ "	AND ( "
-		+ "		(a.start BETWEEN :start AND :end) "
-		+ "		OR (a.end BETWEEN :start AND :end) "
-		+ "		OR (a.start < :start AND a.end > :end) "
-		+ "	)"
+		+ "  AND (a.reminder <> :none) "
+		+ "  AND ( "
+		+ "    (a.start BETWEEN :start AND :end) "
+		+ "      OR (a.end BETWEEN :start AND :end) "
+		+ "      OR (a.start < :start AND a.end > :end) "
+		+ "  )"
 	)
 @NamedQuery(name="getAppointmentByRoomId", query="SELECT a FROM Appointment a WHERE a.room.id = :roomId")
 @NamedQuery(name="getAppointmentByOwnerRoomId", query="SELECT a FROM Appointment a WHERE a.deleted = false AND a.owner.id = :userId AND a.room.id = :roomId")
@@ -103,20 +106,20 @@ import org.apache.openmeetings.db.entity.user.User;
 @NamedQuery(name="appointmentsInRangeByUser",
 	query="SELECT a FROM MeetingMember mm, IN(mm.appointment) a "
 		+ "WHERE mm.deleted = false AND mm.user.id <> a.owner.id AND mm.user.id = :userId "
-		+ "	AND ( "
-		+ "		(a.start BETWEEN :start AND :end) "
-		+ "		OR (a.end BETWEEN :start AND :end) "
-		+ "		OR (a.start < :start AND a.end > :end) "
-		+ "	)"
+		+ "  AND ( "
+		+ "    (a.start BETWEEN :start AND :end) "
+		+ "      OR (a.end BETWEEN :start AND :end) "
+		+ "      OR (a.start < :start AND a.end > :end) "
+		+ "  )"
 	)
 @NamedQuery(name="appointedRoomsInRangeByUser",
 	query="SELECT a.room FROM MeetingMember mm, IN(mm.appointment) a "
 		+ "WHERE mm.deleted = false AND mm.user.id <> a.owner.id AND mm.user.id = :userId "
-		+ "	AND ( "
-		+ "		(a.start BETWEEN :start AND :end) "
-		+ "		OR (a.end BETWEEN :start AND :end) "
-		+ "		OR (a.start < :start AND a.end > :end) "
-		+ "	)"
+		+ "  AND ( "
+		+ "    (a.start BETWEEN :start AND :end) "
+		+ "      OR (a.end BETWEEN :start AND :end) "
+		+ "      OR (a.start < :start AND a.end > :end) "
+		+ "  )"
 	)
 @NamedQuery(name="getNextAppointment", query="SELECT a FROM Appointment a WHERE a.deleted = false AND a.start > :start AND a.owner.id = :userId")
 @NamedQuery(name="getAppointmentsByTitle", query="SELECT a FROM Appointment a WHERE a.deleted = false AND a.title LIKE :title AND a.owner.id = :userId")
@@ -129,6 +132,7 @@ import org.apache.openmeetings.db.entity.user.User;
 @NamedQuery(name = "deleteAppointmentsbyCalendar",
 	query = "UPDATE Appointment a SET a.deleted = true WHERE a.calendar.id = :calId")
 @XmlRootElement(name = APPOINTMENT_NODE)
+@XmlAccessorType(XmlAccessType.FIELD)
 public class Appointment extends HistoricalEntity {
 	private static final long serialVersionUID = 1L;
 	public static final int REMINDER_NONE_ID = 1;
@@ -329,6 +333,10 @@ public class Appointment extends HistoricalEntity {
 
 	public Date getStart() {
 		return start;
+	}
+
+	public static Date allowedStart(Date start) {
+		return new Date(start.getTime() - (getAppointmentPreStartMinutes() * 60 * 1000));
 	}
 
 	public Calendar startCalendar(TimeZone timeZone) {

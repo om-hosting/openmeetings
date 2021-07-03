@@ -21,7 +21,7 @@
 
 	<body>
 		<section name="Audio/Video Conferencing">
-			<img src="images/cut_conference_room.png" alt="Conference Room" />
+			<img src="images/cut_conference_room_om5.png" alt="Conference Room" />
 			<p>OpenMeetings enables you to make Audio/Video conferencing.</p>
 		</section>
 		<section name="Calendar">
@@ -59,7 +59,7 @@
 			<p>Openmeetings provides video conferencing, instant messaging,
 				white board, collaborative document editing and other groupware
 				tools. It uses API functions of Media Server for Remoting
-				and Streaming (Red5 or Kurento).
+				and Streaming Kurento.
 			</p>
 			<p>
 				OpenMeetings is a project of the Apache, the old project
@@ -69,84 +69,40 @@
 		</section>
 		<section name="News">
 			<div class="bd-callout bd-callout-danger">
-				<h4>Version 5.0.0-M3 released!</h4>
-				<div>Release 5.0.0-M3, provides following improvements:<br/>
-					This release provides WebRTC audio/video/screen-sharing in the Room
-					<div class="bd-callout bd-callout-info">Flash plugin is no more required in the browser<br/>
-						<br/>
-						Please NOTE: this version might be not production ready<br/>
-						<br/>
-						IMPORTANT: Java 11 is required
-					</div>
-					Backup/Restore:
-					<ul>
-						<li>Multiple issues with restore were fixed</li>
-						<li>Confirmation of backup import was added</li>
-						<li>File/recording hashes are preserved when possible</li>
-					</ul>
-					White board:
-					<ul>
-						<li>Document upload/conversion is improved</li>
-						<li>Whiteboards are not auto-created on room enter</li>
-						<li>Keyboard shortcut for quick poll is added</li>
-					</ul>
-					Room:
-					<ul>
-						<li>User list is now sorted</li>
-					</ul>
-					Audio/Video:
-					<ul>
-						<li>Multiple issues with audio/video/screen sharing are fixed</li>
-					</ul>
+				<h4>Version 6.0.0 released!</h4>
+				<div>Release 6.0.0, provides following improvements:<br/>
+					This release provides WebRTC audio/video/screen-sharing in the Room<br/>
 
+					Security:
+					<ul>
+						<li>TLS1.2. is used for OAuth</li>
+						<li>NetTest client count can be limited</li>
+						<li>Captcha is now configurable</li>
+						<li>Recordings can be globally disabled</li>
+					</ul>
+					Stability:
+					<ul>
+						<li>Audio/video in room is more stable</li>
+					</ul>
+					UI:
+					<ul>
+						<li>Translations are improved</li>
+						<li>Invitation form displayes time in client time zone</li>
+						<li>Notifications are displayed using JS Notification API</li>
+						<li>Video pods size can be fixed and configurable per-user</li>
+					</ul>
 					<br/>
 					Other fixes and improvements
 				</div>
 				<br/>
 
 				<span>
-					36 issues are fixed please check <br/>
-					<a href="https://www.apache.org/dist/openmeetings/5.0.0-M3/CHANGELOG.md">CHANGELOG</a> and
-					<a href="https://issues.apache.org/jira/secure/ReleaseNote.jspa?projectId=12312720&amp;version=12345741">Detailed list</a>
+					40 issues are fixed please check <br/>
+					<a href="https://www.apache.org/dist/openmeetings/6.0.0/CHANGELOG.md">CHANGELOG</a> and
+					<a href="https://issues.apache.org/jira/secure/ReleaseNote.jspa?projectId=12312720&amp;version=12348297">Detailed list</a>
 				</span>
 				<span> See <a href="downloads.html">Downloads page</a>.</span>
-				<span class="date">(2019-12-15)</span>
-			</div>
-			<div class="bd-callout bd-callout-danger">
-				<h4>Version 4.0.10 released!</h4>
-				<div>Release 4.0.10, provides following improvements:<br/>
-					Backup/Restore:
-					<ul>
-						<li>Multiple issues with restore were fixed</li>
-						<li>Confirmation of backup import was added</li>
-						<li>File/recording hashes are preserved when possible</li>
-					</ul>
-					White board:
-					<ul>
-						<li>Document upload/conversion is improved</li>
-						<li>Whiteboards are not auto-created on room enter</li>
-						<li>Keyboard shortcut for quick poll is added</li>
-					</ul>
-					Room:
-					<ul>
-						<li>User list is now sorted</li>
-					</ul>
-					<br/>
-					Other fixes and improvements
-					<div class="bd-callout bd-callout-info">Please update to this release from any previous OpenMeetings release</div>
-				</div>
-				<br/>
-
-				<span>
-					11 issues are fixed please check <br/>
-					<a href="https://www.apache.org/dist/openmeetings/4.0.10/CHANGELOG.md">CHANGELOG</a> and
-					<a href="https://issues.apache.org/jira/secure/ReleaseNote.jspa?projectId=12312720&amp;version=12345740">Detailed list</a>
-				</span>
-				<span> See <a href="downloads.html">Downloads page</a>.</span>
-				<span class="date">(2019-12-16)</span>
-			</div>
-			<div class="bd-callout bd-callout-info">
-				<span class="date"><a href="NewsArchive.html">You can find older news here</a></span>
+				<span class="date">(2021-03-09)</span>
 			</div>
 			<div class="bd-callout bd-callout-info">
 				<span class="date"><a href="NewsArchive.html">You can find older news here</a></span>

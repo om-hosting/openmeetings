@@ -21,7 +21,7 @@
 <!DOCTYPE html>
 <html xmlns:wicket="http://wicket.apache.org">
 <wicket:extend>
-	<div class="adminPanelColumnTable">
+	<div class="adminPanelColumnTable col-6">
 		<div class="adminNav" wicket:id="navigator">[dataview navigator]</div>
 		<table class="list-table table-striped table-hover">
 			<thead>
@@ -40,7 +40,7 @@
 			</tbody>
 		</table>
 	</div>
-	<div class="adminPanelColumnForm">
+	<div class="adminPanelColumnForm col-6">
 		<form wicket:id="form" class="adminForm">
 			<div class="actions" wicket:id="buttons"></div>
 			<div class="scrollcontent" id="adminForm">
@@ -66,8 +66,8 @@
 						<div wicket:id="boolean-box">
 							<label wicket:for="valueB" class="col-3 text-right"><wicket:message key="271" /></label>
 							<div class="onoffswitch">
-								<input type="checkbox" class="onoff-checkbox" wicket:id="valueB">
-								<label class="onoff-label" wicket:for="valueB"></label>
+								<input type="checkbox" class="onoff-checkbox" wicket:id="valueB"/>
+								<label class="onoff-label clickable" wicket:for="valueB"></label>
 							</div>
 						</div>
 						<div wicket:id="hotkey-box">

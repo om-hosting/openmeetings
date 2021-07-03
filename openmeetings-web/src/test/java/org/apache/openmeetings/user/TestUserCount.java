@@ -18,36 +18,53 @@
  */
 package org.apache.openmeetings.user;
 
+import static java.util.UUID.randomUUID;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.apache.openmeetings.AbstractWicketTester;
+import org.apache.openmeetings.db.entity.user.Group;
 import org.apache.openmeetings.db.entity.user.User;
 import org.junit.jupiter.api.Test;
 
-public class TestUserCount extends AbstractWicketTester {
+class TestUserCount extends AbstractWicketTester {
 	@Test
-	public void testCountSearchUsers() throws Exception {
+	void testCountSearchUsers() throws Exception {
 		User u = createUser();
-		assertTrue(userDao.count(u.getFirstname()) == 1, "Account of search users should be one");
+		assertEquals(1, userDao.count(u.getFirstname()), "A count of search users should be one");
 	}
 
 	@Test
-	public void testCountFilteredUsers() throws Exception {
+	void testCountFilteredUsers() throws Exception {
 		User u = createUser();
 		User contact = createUserContact(u.getId());
-		assertTrue(userDao.count(contact.getFirstname(), true, u.getId()) == 1, "Account of filtered user should be one");
+		assertEquals(1, userDao.count(contact.getFirstname(), true, u.getId()), "A count of filtered user should be one");
 	}
 
 	@Test
-	public void testCountUnfilteredUsers() throws Exception {
+	void testCountUnfilteredUsers() throws Exception {
 		User u = createUser();
 		createUserContact(u.getId());
-		assertTrue(userDao.count("firstname", false, getUserId()) > 1, "Account of unfiltered should be more then one");
+		assertTrue(userDao.count("firstname", false, getUserId()) > 1, "A count of unfiltered should be more then one");
 	}
 
 	@Test
-	public void testCountAllUsers() {
-		assertTrue(userDao.count() > 0, "Account of users should be positive");
+	void testCountAllUsers() {
+		assertTrue(userDao.count() > 0, "A count of users should be positive");
+	}
+
+	@Test
+	void testCountProfileSearch() throws Exception {
+		String uUid = "usr" + randomUUID().toString();
+		Group g1 = new Group().setName("grp" + randomUUID().toString());
+		groupDao.update(g1, null);
+		Group g2 = new Group().setName("grp" + randomUUID().toString());
+		groupDao.update(g2, null);
+		User u = getUser(uUid);
+		u.addGroup(g1);
+		u.addGroup(g2);
+		userDao.update(u, null);
+		assertEquals(1, userDao.searchCountUserProfile(u.getId(), uUid, null, null), "A count of search users should be one");
 	}
 }

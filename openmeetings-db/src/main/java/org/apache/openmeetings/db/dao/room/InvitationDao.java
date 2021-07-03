@@ -31,7 +31,6 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.PARAM_USER_ID;
 
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
-import java.util.Date;
 import java.util.List;
 import java.util.TimeZone;
 
@@ -40,6 +39,8 @@ import javax.persistence.PersistenceContext;
 
 import org.apache.openmeetings.db.dao.IDataProviderDao;
 import org.apache.openmeetings.db.entity.room.Invitation;
+import org.apache.openmeetings.db.entity.room.Invitation.Valid;
+import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.util.CalendarHelper;
 import org.apache.wicket.util.string.Strings;
 import org.slf4j.Logger;
@@ -117,11 +118,11 @@ public class InvitationDao implements IDataProviderDao<Invitation> {
 	}
 
 	public Invitation update(Invitation invitation) {
+		// [OPENMEETINGS-2441] in life cycle state  unmanaged while cascading persistence via field
+		invitation.setInvitedBy(em.find(User.class, invitation.getInvitedBy().getId()));
 		if (invitation.getId() == null) {
-			invitation.setInserted(new Date());
 			em.persist(invitation);
 		} else {
-			invitation.setUpdated(new Date());
 			invitation = em.merge(invitation);
 		}
 		return invitation;
@@ -138,7 +139,15 @@ public class InvitationDao implements IDataProviderDao<Invitation> {
 		update(entity, userId);
 	}
 
-	public Invitation getByHash(String hash, boolean hidePass, boolean markUsed) {
+	public void markUsed(Invitation i) {
+		if (Valid.ONE_TIME == i.getValid()) {
+			i.setUsed(true);
+			update(i);
+			em.flush(); // flash is required to eliminate 'detach' effect
+		}
+	}
+
+	public Invitation getByHash(String hash, boolean hidePass) {
 		List<Invitation> list = em.createNamedQuery("getInvitationByHashCode", Invitation.class)
 				.setParameter("hashCode", hash).getResultList();
 		Invitation i = list != null && list.size() == 1 ? list.get(0) : null;
@@ -147,11 +156,6 @@ public class InvitationDao implements IDataProviderDao<Invitation> {
 				case ONE_TIME:
 					// one-time invitation
 					i.setAllowEntry(!i.isUsed());
-					if (markUsed) {
-						i.setUsed(true);
-						update(i);
-						em.flush(); // flash is required to eliminate 'detach' effect
-					}
 					break;
 				case PERIOD:
 					String tzId = i.getInvitee().getTimeZoneId();

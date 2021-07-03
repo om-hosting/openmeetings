@@ -20,7 +20,7 @@ package org.apache.openmeetings.web.user;
 
 import static org.apache.openmeetings.db.entity.user.PrivateMessage.INBOX_FOLDER_ID;
 import static org.apache.openmeetings.db.entity.user.PrivateMessage.SENT_FOLDER_ID;
-import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_MYROOMS_ENABLED;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.isMyRoomsEnabled;
 import static org.apache.openmeetings.web.app.Application.getContactsLink;
 import static org.apache.openmeetings.web.app.Application.getInvitationLink;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
@@ -38,7 +38,6 @@ import java.util.List;
 import org.apache.openmeetings.core.mail.MailHandler;
 import org.apache.openmeetings.db.dao.basic.ConfigurationDao;
 import org.apache.openmeetings.db.dao.calendar.AppointmentDao;
-import org.apache.openmeetings.db.dao.room.IInvitationManager;
 import org.apache.openmeetings.db.dao.room.RoomDao;
 import org.apache.openmeetings.db.dao.user.PrivateMessageDao;
 import org.apache.openmeetings.db.dao.user.UserDao;
@@ -50,11 +49,12 @@ import org.apache.openmeetings.db.entity.room.Room;
 import org.apache.openmeetings.db.entity.user.PrivateMessage;
 import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.db.entity.user.User.Type;
+import org.apache.openmeetings.db.manager.IInvitationManager;
 import org.apache.openmeetings.util.CalendarHelper;
 import org.apache.openmeetings.web.app.Application;
 import org.apache.openmeetings.web.app.WebSession;
-import org.apache.openmeetings.web.common.OmDateTimePicker;
 import org.apache.openmeetings.web.common.OmModalCloseButton;
+import org.apache.openmeetings.web.common.datetime.OmDateTimePicker;
 import org.apache.openmeetings.web.user.calendar.AppointmentDialog;
 import org.apache.openmeetings.web.util.CalendarWebHelper;
 import org.apache.openmeetings.web.util.RoomTypeDropDown;
@@ -89,7 +89,7 @@ public class MessageDialog extends Modal<PrivateMessage> {
 	private final OmDateTimePicker start = new OmDateTimePicker("start", Model.of(LocalDateTime.now()));
 	private final OmDateTimePicker end = new OmDateTimePicker("end", Model.of(LocalDateTime.now()));
 	private boolean isPrivate = false;
-	private final IModel<Collection<User>> modelTo = new CollectionModel<>(new ArrayList<User>());
+	private final IModel<Collection<User>> modelTo = new CollectionModel<>(new ArrayList<>());
 	@SpringBean
 	private RoomDao roomDao;
 	@SpringBean
@@ -116,7 +116,7 @@ public class MessageDialog extends Modal<PrivateMessage> {
 		setUseCloseHandler(true);
 		size(Modal.Size.Large);
 
-		addButton(new BootstrapAjaxButton("button", new ResourceModel("218"), form, Buttons.Type.Outline_Primary) {
+		addButton(new BootstrapAjaxButton(BUTTON_MARKUP_ID, new ResourceModel("218"), form, Buttons.Type.Outline_Primary) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -148,8 +148,6 @@ public class MessageDialog extends Modal<PrivateMessage> {
 						MeetingMember mm = new MeetingMember();
 						mm.setUser(to);
 						mm.setDeleted(false);
-						mm.setInserted(a.getInserted());
-						mm.setUpdated(a.getUpdated());
 						mm.setAppointment(a);
 						attendees.add(mm);
 					}
@@ -190,7 +188,7 @@ public class MessageDialog extends Modal<PrivateMessage> {
 								invitationLink = "";
 							} else {
 								invitationLink = "<br/>" //
-										+ Application.getString("503", to.getLanguageId())
+										+ Application.getString("template.room.invitation.text", to.getLanguageId())
 										+ "<br/><a href='" + invitationLink
 										+ "'>"
 										+ Application.getString("504", to.getLanguageId()) + "</a><br/>";
@@ -200,7 +198,7 @@ public class MessageDialog extends Modal<PrivateMessage> {
 						String subj = p.getSubject() == null ? "" : p.getSubject();
 						handler.send(to.getAddress().getEmail(),
 								Application.getString("1301", to.getLanguageId()) + subj,
-								(p.getMessage() == null ? "" : p.getMessage().replaceAll("\\<.*?>", "")) + aLinkHTML + invitationLink);
+								(p.getMessage() == null ? "" : p.getMessage().replaceAll("\\<[^>]*+>", "")) + aLinkHTML + invitationLink);
 					}
 				}
 				MessageDialog.this.close(target);
@@ -228,7 +226,7 @@ public class MessageDialog extends Modal<PrivateMessage> {
 				target.add(bookedRoom, roomParamsBlock);
 			}
 		}));
-		bookedRoom.setVisible(cfgDao.getBool(CONFIG_MYROOMS_ENABLED, true));
+		bookedRoom.setVisible(isMyRoomsEnabled());
 		roomParamsBlock.add(roomParams);
 		roomParams.add(new RoomTypeDropDown("room.type"));
 		roomParams.add(start);
@@ -242,7 +240,7 @@ public class MessageDialog extends Modal<PrivateMessage> {
 		LocalDateTime now = ZonedDateTime.now(getZoneId()).toLocalDateTime();
 		start.setModelObject(now);
 		end.setModelObject(now.plus(1, ChronoUnit.HOURS));
-		modelTo.setObject(new ArrayList<User>());
+		modelTo.setObject(new ArrayList<>());
 		PrivateMessage p = new PrivateMessage();
 		p.setFrom(userDao.get(getUserId()));
 		p.setOwner(p.getFrom());

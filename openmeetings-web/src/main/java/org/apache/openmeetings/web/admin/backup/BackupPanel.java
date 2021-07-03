@@ -19,6 +19,7 @@
 package org.apache.openmeetings.web.admin.backup;
 
 import static java.time.Duration.ZERO;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.ATTR_DISABLED;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getMaxUploadSize;
 
 import java.io.File;
@@ -40,6 +41,7 @@ import org.apache.openmeetings.web.util.upload.BootstrapFileUploadBehavior;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormSubmitBehavior;
+import org.apache.wicket.authroles.authorization.strategies.role.annotations.AuthorizeInstantiation;
 import org.apache.wicket.core.request.handler.IPartialPageRequestHandler;
 import org.apache.wicket.extensions.ajax.AjaxDownloadBehavior;
 import org.apache.wicket.markup.html.WebMarkupContainer;
@@ -69,6 +71,7 @@ import de.agilecoders.wicket.core.markup.html.bootstrap.utilities.BackgroundColo
  * @author swagner
  *
  */
+@AuthorizeInstantiation({"ADMIN", "ADMIN_BACKUP"})
 public class BackupPanel extends AdminBasePanel {
 	private static final Logger log = LoggerFactory.getLogger(BackupPanel.class);
 	private static final long serialVersionUID = 1L;
@@ -130,7 +133,7 @@ public class BackupPanel extends AdminBasePanel {
 			DecimalFormat formatter = new DecimalFormat("#,###.00");
 			add(new Label("MaxUploadSize", formatter.format(megaBytes)));
 
-			add(new CheckBox("includeFilesInBackup", includeFilesInBackup));
+			add(new CheckBox("includeFilesInBackup", includeFilesInBackup).setOutputMarkupId(true));
 
 			// Set maximum size controlled by configuration
 			setMaxSize(Bytes.bytes(maxBytes));
@@ -256,7 +259,7 @@ public class BackupPanel extends AdminBasePanel {
 
 		private void updateButtons(IPartialPageRequestHandler target, boolean enabled) {
 			download.setEnabled(enabled);
-			upload.add(enabled ? AttributeModifier.remove("disabled") : AttributeModifier.append("disabled", "disabled"));
+			upload.add(enabled ? AttributeModifier.remove(ATTR_DISABLED) : AttributeModifier.append(ATTR_DISABLED, ATTR_DISABLED));
 			fileUploadField.setEnabled(enabled);
 			target.add(download, upload);
 		}

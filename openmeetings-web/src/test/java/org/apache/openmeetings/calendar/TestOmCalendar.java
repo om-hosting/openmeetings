@@ -28,12 +28,12 @@ import org.apache.openmeetings.db.entity.user.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class TestOmCalendar extends AbstractJUnitDefaults {
+class TestOmCalendar extends AbstractJUnitDefaults {
 	@Autowired
 	private OmCalendarDao calendarDao;
 
 	@Test
-	public void saveCalendar() {
+	void saveCalendar() {
 		OmCalendar calendar = new OmCalendar();
 		Long userId = 1L;
 		User owner = userDao.get(userId);

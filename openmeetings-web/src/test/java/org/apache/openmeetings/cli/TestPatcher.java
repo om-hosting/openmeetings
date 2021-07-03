@@ -36,7 +36,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public class TestPatcher {
+class TestPatcher {
 	private static final String HOST = "myhost";
 	private static final String PORT = "6666";
 	private static final String DB = "mydb";
@@ -49,7 +49,7 @@ public class TestPatcher {
 	}
 
 	@Test
-	public void test() throws Exception {
+	void test() throws Exception {
 		for (DbType dbType : DbType.values()) {
 			ConnectionProperties props = ConnectionPropertiesPatcher.patch(dbType, HOST, PORT, DB, USER, PASS);
 			assertEquals(dbType, props.getDbType(), "DB type should match");

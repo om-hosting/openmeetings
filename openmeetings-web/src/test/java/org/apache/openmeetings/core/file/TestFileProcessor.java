@@ -37,14 +37,14 @@ import org.apache.openmeetings.util.process.ProcessResultList;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class TestFileProcessor extends AbstractJUnitDefaults {
+class TestFileProcessor extends AbstractJUnitDefaults {
 	private static final String FILE_NAME = "test_name";
 
 	@Autowired
 	protected FileProcessor processor;
 
 	@Test
-	public void testProcessPng() throws Exception {
+	void testProcessPng() throws Exception {
 		for (String ext : new String[] {null, "txt", "jpg"}) {
 			FileItem f = new FileItemDTO()
 					.setName(String.format(FILE_NAME_FMT, FILE_NAME, ext))

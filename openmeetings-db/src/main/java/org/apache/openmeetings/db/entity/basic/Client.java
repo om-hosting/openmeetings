@@ -19,6 +19,7 @@
 package org.apache.openmeetings.db.entity.basic;
 
 import static java.util.UUID.randomUUID;
+import static org.apache.openmeetings.util.OmFileHelper.SIP_USER_ID;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -31,13 +32,13 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import org.apache.openmeetings.db.dao.user.UserDao;
 import org.apache.openmeetings.db.entity.IDataProviderEntity;
 import org.apache.openmeetings.db.entity.room.Room;
 import org.apache.openmeetings.db.entity.room.Room.Right;
 import org.apache.openmeetings.db.entity.user.User;
-import org.apache.wicket.util.collections.ConcurrentHashSet;
 import org.apache.wicket.util.string.Strings;
 
 import com.github.openjson.JSONArray;
@@ -68,8 +69,8 @@ public class Client implements IDataProviderEntity, IWsClient {
 	private final String uid;
 	private final String sid;
 	private String remoteAddress;
-	private final Set<Right> rights = new ConcurrentHashSet<>();
-	private final Set<Activity> activities = new ConcurrentHashSet<>();
+	private final Set<Right> rights = ConcurrentHashMap.newKeySet();
+	private final Set<Activity> activities = ConcurrentHashMap.newKeySet();
 	private final Map<String, StreamDesc> streams = new ConcurrentHashMap<>();
 	private final Date connectedSince;
 	private int cam = -1;
@@ -109,7 +110,11 @@ public class Client implements IDataProviderEntity, IWsClient {
 	}
 
 	public Long getUserId() {
-		return user.getId();
+		return user == null ? null : user.getId();
+	}
+
+	public boolean sameUserId(Long userId) {
+		return getUserId() != null && getUserId().equals(userId);
 	}
 
 	public String getPictureUri() {
@@ -123,6 +128,10 @@ public class Client implements IDataProviderEntity, IWsClient {
 
 	public String getSid() {
 		return sid;
+	}
+
+	public boolean isSip() {
+		return SIP_USER_ID.equals(getUserId());
 	}
 
 	public void clear() {
@@ -242,6 +251,11 @@ public class Client implements IDataProviderEntity, IWsClient {
 				.findFirst();
 	}
 
+	public Stream<StreamDesc> getCamStreams() {
+		return streams.values().stream()
+				.filter(sd -> StreamType.WEBCAM == sd.getType());
+	}
+
 	public Client restoreActivities(StreamDesc sd) {
 		synchronized (activities) {
 			Set<Activity> aa = new HashSet<>(sd.sactivities);
@@ -356,7 +370,8 @@ public class Client implements IDataProviderEntity, IWsClient {
 				a.put("country", user.getAddress().getCountry());
 			}
 		}
-		return o.put("user", u);
+		return o.put("user", u)
+				.put("level", hasRight(Right.MODERATOR) ? 5 : (hasRight(Right.WHITEBOARD) ? 3 : 1));
 	}
 
 	public JSONObject toJson(boolean self) {
@@ -437,13 +452,13 @@ public class Client implements IDataProviderEntity, IWsClient {
 
 	@Override
 	public String toString() {
-		return "Client [uid=" + uid + ", sessionId=" + sessionId + ", pageId=" + pageId + ", userId=" + user.getId() + ", room=" + (room == null ? null : room.getId())
+		return "Client [uid=" + uid + ", sessionId=" + sessionId + ", pageId=" + pageId + ", userId=" + getUserId() + ", room=" + getRoomId()
 				+ ", rights=" + rights + ", sactivities=" + activities + ", connectedSince=" + connectedSince + "]";
 	}
 
 	public class StreamDesc implements Serializable {
 		private static final long serialVersionUID = 1L;
-		private final Set<Activity> sactivities = new ConcurrentHashSet<>();
+		private final Set<Activity> sactivities = ConcurrentHashMap.newKeySet();
 		private final String uuid;
 		private final StreamType type;
 		private int swidth;
@@ -543,13 +558,21 @@ public class Client implements IDataProviderEntity, IWsClient {
 		}
 
 		public JSONObject toJson() {
-			return addUserJson(new JSONObject()
+			return toJson(false);
+		}
+
+		public JSONObject toJson(boolean self) {
+			JSONObject o = new JSONObject()
 					.put("uid", uuid)
 					.put("type", type.name())
 					.put("width", swidth)
 					.put("height", sheight)
 					.put("activities", new JSONArray(sactivities))
-					.put("cuid", uid));
+					.put("cuid", uid);
+			if (self) {
+				o.put("cam", cam).put("mic", mic);
+			}
+			return addUserJson(o);
 		}
 
 		@Override

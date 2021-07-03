@@ -21,7 +21,7 @@
 <!DOCTYPE html>
 <html xmlns:wicket="http://wicket.apache.org">
 <wicket:extend>
-	<div class="adminPanelColumnTable">
+	<div class="adminPanelColumnTable col-6">
 		<div class="adminNav" wicket:id="navigator">[dataview navigator]</div>
 		<table class="list-table table-striped table-hover">
 			<thead>
@@ -32,13 +32,18 @@
 			</thead>
 			<tbody wicket:id="listContainer">
 				<tr wicket:id="groupList">
-					<td class="col-1"><div class="col-wrapper"><span wicket:id="id"></span></div></td>
-					<td class="col-11"><div class="col-wrapper"><span wicket:id="name"></span></div></td>
+					<td class="col-1"><div class="col-wrapper">
+						<span wicket:id="id"></span>
+					</div></td>
+					<td class="col-11"><div class="col-wrapper">
+						<i wicket:id="default" class="fas fa-asterisk m-1 text-primary"></i>
+						<span wicket:id="name"></span>
+					</div></td>
 				</tr>
 			</tbody>
 		</table>
 	</div>
-	<div class="adminPanelColumnForm">
+	<div class="adminPanelColumnForm col-6">
 		<form wicket:id="form" class="adminForm">
 			<div class="actions" wicket:id="buttons"></div>
 			<div class="scrollcontent" id="adminForm">
@@ -92,6 +97,11 @@
 						<label wicket:for="reminderDays" class="col-3 text-right"><wicket:message key="admin.group.form.reminderDays" /></label>
 						<input type="number" wicket:id="reminderDays" class="col-7"/>
 						<div class="col-1 d-inline-block"><wicket:message key="admin.group.form.days"/></div>
+					</div>
+					<div class="formelement">
+						<label wicket:for="notifyInterval" class="col-3 text-right"><wicket:message key="admin.group.new.users.notification.interval" /></label>
+						<input type="number" wicket:id="notifyInterval" class="col-7"/>
+						<div class="col-1 d-inline-block"><wicket:message key="admin.group.form.minutes"/></div>
 					</div>
 				</fieldset>
 				<div class="bottom-bumper"></div>

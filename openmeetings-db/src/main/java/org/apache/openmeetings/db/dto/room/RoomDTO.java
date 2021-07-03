@@ -33,12 +33,8 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import org.apache.openmeetings.db.dao.file.BaseFileItemDao;
-import org.apache.openmeetings.db.dao.room.RoomDao;
-import org.apache.openmeetings.db.dao.user.GroupDao;
 import org.apache.openmeetings.db.entity.room.Room;
 import org.apache.openmeetings.db.entity.room.Room.RoomElement;
-import org.apache.wicket.util.string.Strings;
 
 import com.github.openjson.JSONArray;
 import com.github.openjson.JSONObject;
@@ -49,6 +45,7 @@ public class RoomDTO implements Serializable {
 	private static final long serialVersionUID = 1L;
 	private Long id;
 	private String name;
+	private String tag;
 	private String comment;
 	private Room.Type type;
 	private Long capacity = Long.valueOf(4);
@@ -77,6 +74,7 @@ public class RoomDTO implements Serializable {
 	public RoomDTO(Room r) {
 		id = r.getId();
 		name = r.getName();
+		tag = r.getTag();
 		comment = r.getComment();
 		type = r.getType();
 		capacity = r.getCapacity();
@@ -99,37 +97,6 @@ public class RoomDTO implements Serializable {
 		files = RoomFileDTO.get(r.getFiles());
 	}
 
-	public Room get(RoomDao roomDao, GroupDao groupDao, BaseFileItemDao fileDao) {
-		Room r = id == null ? new Room() : roomDao.get(id);
-		r.setId(id);
-		r.setName(name);
-		r.setComment(comment);
-		r.setType(type);
-		r.setCapacity(capacity);
-		r.setAppointment(appointment);
-		r.setConfno(confno);
-		r.setIspublic(isPublic);
-		r.setDemoRoom(demo);
-		r.setClosed(closed);
-		r.setDemoTime(demoTime);
-		r.setExternalId(externalId);
-		if (!Strings.isEmpty(externalType)
-				&& r.getGroups().stream().filter(gu -> gu.getGroup().isExternal() && gu.getGroup().getName().equals(externalType)).count() == 0)
-		{
-			r.addGroup(groupDao.getExternal(externalType));
-		}
-		r.setRedirectURL(redirectUrl);
-		r.setModerated(moderated);
-		r.setWaitModerator(waitModerator);
-		r.setAllowUserQuestions(allowUserQuestions);
-		r.setAllowRecording(allowRecording);
-		r.setWaitRecording(waitRecording);
-		r.setAudioOnly(audioOnly);
-		r.setHiddenElements(hiddenElements);
-		r.setFiles(RoomFileDTO.get(id, files, fileDao));
-		return r;
-	}
-
 	public Long getId() {
 		return id;
 	}
@@ -144,6 +111,14 @@ public class RoomDTO implements Serializable {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+
+	public String getTag() {
+		return tag;
+	}
+
+	public void setTag(String tag) {
+		this.tag = tag;
 	}
 
 	public String getComment() {
@@ -208,6 +183,14 @@ public class RoomDTO implements Serializable {
 
 	public void setModerated(boolean moderated) {
 		this.moderated = moderated;
+	}
+
+	public boolean isWaitModerator() {
+		return waitModerator;
+	}
+
+	public void setWaitModerator(boolean waitModerator) {
+		this.waitModerator = waitModerator;
 	}
 
 	public boolean isAllowUserQuestions() {
@@ -319,8 +302,12 @@ public class RoomDTO implements Serializable {
 		RoomDTO r = new RoomDTO();
 		r.id = optLong(o, "id");
 		r.name = o.optString("name");
+		r.tag = o.optString("tag");
 		r.comment = o.optString("comment");
 		r.type = optEnum(Room.Type.class, o, "type");
+		if (r.type == null) {
+			throw new IllegalArgumentException("Room should have valid type");
+		}
 		r.capacity = o.optLong("capacity", 4);
 		r.appointment = o.optBoolean("appointment", false);
 		r.confno = o.optString("confno");

@@ -19,6 +19,9 @@
 package org.apache.openmeetings.db.entity.room;
 
 import static org.apache.openmeetings.db.bind.Constants.ROOM_NODE;
+import static org.apache.openmeetings.db.dao.room.RoomDao.GRP_FILES;
+import static org.apache.openmeetings.db.dao.room.RoomDao.GRP_GROUPS;
+import static org.apache.openmeetings.db.dao.room.RoomDao.GRP_MODERATORS;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,6 +47,8 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.Transient;
+import javax.xml.bind.annotation.XmlAccessType;
+import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlElementWrapper;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -66,9 +71,9 @@ import org.apache.openmeetings.db.entity.user.Group;
 
 @Entity
 @FetchGroups({
-	@FetchGroup(name = "roomModerators", attributes = { @FetchAttribute(name = "moderators") })
-	, @FetchGroup(name = "roomGroups", attributes = { @FetchAttribute(name = "groups") })
-	, @FetchGroup(name = "roomFiles", attributes = { @FetchAttribute(name = "files") })
+	@FetchGroup(name = GRP_MODERATORS, attributes = { @FetchAttribute(name = "moderators") })
+	, @FetchGroup(name = GRP_GROUPS, attributes = { @FetchAttribute(name = "groups") })
+	, @FetchGroup(name = GRP_FILES, attributes = { @FetchAttribute(name = "files") })
 })
 @NamedQuery(name = "getNondeletedRooms", query = "SELECT r FROM Room r WHERE r.deleted = false")
 @NamedQuery(name = "getPublicRooms", query = "SELECT r from Room r WHERE r.ispublic = true and r.deleted = false and r.type = :type")
@@ -78,13 +83,16 @@ import org.apache.openmeetings.db.entity.user.Group;
 @NamedQuery(name = "getExternalRoom", query = "SELECT rg.room FROM RoomGroup rg WHERE "
 		+ "rg.group.deleted = false AND rg.group.external = true AND rg.group.name = :externalType "
 		+ "AND rg.room.deleted = false AND rg.room.type = :type AND rg.room.externalId = :externalId")
+@NamedQuery(name = "getExternalRoomNoType", query = "SELECT rg.room FROM RoomGroup rg WHERE "
+		+ "rg.group.deleted = false AND rg.group.external = true AND rg.group.name = :externalType "
+		+ "AND rg.room.deleted = false AND rg.room.externalId = :externalId")
 @NamedQuery(name = "getPublicRoomsOrdered", query = "SELECT r from Room r WHERE r.ispublic= true AND r.deleted= false AND r.appointment = false ORDER BY r.name ASC")
 @NamedQuery(name = "getRoomById", query = "SELECT r FROM Room r WHERE r.deleted = false AND r.id = :id")
 @NamedQuery(name = "getRoomsByIds", query = "SELECT r FROM Room r WHERE r.deleted = false AND r.id IN :ids")
+@NamedQuery(name = "getRoomByTag", query = "SELECT r FROM Room r WHERE r.deleted = false AND r.tag = :tag")
 @NamedQuery(name = "getSipRoomIdsByIds", query = "SELECT r.id FROM Room r WHERE r.deleted = false AND r.sipEnabled = true AND r.id IN :ids")
 @NamedQuery(name = "countRooms", query = "SELECT COUNT(r) FROM Room r WHERE r.deleted = false")
 @NamedQuery(name = "getBackupRooms", query = "SELECT r FROM Room r ORDER BY r.id")
-@NamedQuery(name = "getRoomsCapacityByIds", query = "SELECT SUM(r.capacity) FROM Room r WHERE r.deleted = false AND r.id IN :ids")
 @NamedQuery(name = "getGroupRooms", query = "SELECT DISTINCT rg.room FROM RoomGroup rg LEFT JOIN FETCH rg.room "
 		+ "WHERE rg.group.id = :groupId AND rg.room.deleted = false AND rg.room.appointment = false "
 		+ "ORDER BY rg.room.name ASC")
@@ -92,6 +100,7 @@ import org.apache.openmeetings.db.entity.user.Group;
 		@Index(name = "room_name_idx", columnList = "name")
 })
 @XmlRootElement(name = ROOM_NODE)
+@XmlAccessorType(XmlAccessType.FIELD)
 public class Room extends HistoricalEntity {
 	private static final long serialVersionUID = 1L;
 	public static final int CONFERENCE_TYPE_ID = 1;
@@ -176,6 +185,10 @@ public class Room extends HistoricalEntity {
 	@XmlElement(name = "name", required = false)
 	private String name;
 
+	@Column(name = "tag", length = 10)
+	@XmlElement(name = "tag", required = false)
+	private String tag;
+
 	@Lob
 	@Column(name = "comment")
 	@XmlElement(name = "comment", required = false)
@@ -208,11 +221,11 @@ public class Room extends HistoricalEntity {
 	private String externalId;
 
 	@XmlElement(name = "externalType", required = false)
-	@Deprecated(since = "5.0")
 	@Transient
 	/**
 	 * @deprecated External group should be used instead
 	 */
+	@Deprecated(since = "5.0")
 	private String externalType;
 
 	@Column(name = "demo_room", nullable = false)
@@ -345,6 +358,14 @@ public class Room extends HistoricalEntity {
 
 	public void setName(String name) {
 		this.name = name;
+	}
+
+	public String getTag() {
+		return tag;
+	}
+
+	public void setTag(String tag) {
+		this.tag = tag;
 	}
 
 	@Override

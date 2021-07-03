@@ -26,19 +26,22 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.Collection;
 
+import javax.ws.rs.BadRequestException;
 import javax.ws.rs.core.Response;
 
 import org.apache.openmeetings.db.dto.basic.ServiceResult;
 import org.apache.openmeetings.db.dto.basic.ServiceResult.Type;
 import org.apache.openmeetings.db.dto.room.RoomDTO;
 import org.apache.openmeetings.db.dto.user.GroupDTO;
+import org.apache.openmeetings.db.entity.room.Room;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-public class TestGroupService extends AbstractWebServiceTest {
+class TestGroupService extends AbstractWebServiceTest {
 	public static final String GROUP_SERVICE_MOUNT = "group";
 
 	@Test
-	public void list() {
+	void list() {
 		ServiceResult r = login();
 		Collection<? extends GroupDTO> groups = getClient(getGroupUrl())
 				.path("/")
@@ -48,7 +51,7 @@ public class TestGroupService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void putTest() {
+	void putTest() {
 		ServiceResult r = login();
 		Response resp = getClient(getGroupUrl())
 				.path("/")
@@ -68,7 +71,7 @@ public class TestGroupService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void addRemoveTest() {
+	void addRemoveTest() {
 		ServiceResult r = login(adminUsername, userpass);
 		Long groupId = createGroup(r.getMessage(), "Test Group");
 		//delete group created
@@ -84,11 +87,20 @@ public class TestGroupService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void addRoomTest() {
+	void addRoomErrTest() {
+		ServiceResult sr = login();
+		RoomDTO rdto = new RoomDTO();
+		rdto.setName("Group WS Room");
+		Assertions.assertThrows(BadRequestException.class, () -> create(sr.getMessage(), rdto));
+	}
+
+	@Test
+	void addRoomTest() {
 		//create new group
 		ServiceResult sr = login();
 		Long groupId = createGroup(sr.getMessage(), "Group WS");
 		RoomDTO rdto = new RoomDTO();
+		rdto.setType(Room.Type.PRESENTATION);
 		rdto.setName("Group WS Room");
 		CallResult<RoomDTO> room = createAndValidate(sr.getMessage(), rdto);
 

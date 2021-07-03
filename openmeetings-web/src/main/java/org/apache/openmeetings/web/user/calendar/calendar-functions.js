@@ -1,14 +1,14 @@
 /* Licensed under the Apache License, Version 2.0 (the "License") http://www.apache.org/licenses/LICENSE-2.0 */
 function onOmGotoClick() {
 	const gotoBtn = $('#calendar .fc-gotoBtn-button');
-	let selected = null
-		, gotoSpan = gotoBtn.parent().find('.goto-span');
+	let gotoSpan = gotoBtn.parent().find('.goto-span');
 	if (gotoSpan.length < 1) {
 		gotoBtn.parent().append($('<span class="goto-span"><span/></span>'));
 	}
 	gotoSpan = gotoBtn.parent().find('.goto-span');
 	gotoSpan.datetimepicker({
-		format: 'L'
+		locale: $('#calendar').fullCalendar('option', 'locale')
+		, format: 'L'
 		, icons: {
 			time: 'fas fa-clock'
 			, date: 'fas fa-calendar'
@@ -29,7 +29,7 @@ function onOmGotoClick() {
 	gotoSpan
 		.off()
 		.on('hide.datetimepicker', function(e){
-			$('#calendar').fullCalendar('gotoDate', e.date.format('YYYY-MM-DD'));
+			$('#calendar').fullCalendar('gotoDate', e.date.startOf('day'));
 		})
 		.datetimepicker('show');
 }

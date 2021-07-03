@@ -18,6 +18,7 @@
  */
 package org.apache.openmeetings.backup;
 
+import static org.apache.openmeetings.backup.TestImport.BACKUP_ROOT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
@@ -27,32 +28,32 @@ import org.apache.openmeetings.db.dao.calendar.OmCalendarDao;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class TestImportCalendar extends AbstractTestImport {
+class TestImportCalendar extends AbstractTestImport {
 	@Autowired
 	private OmCalendarDao calendarDao;
 	@Autowired
 	private MeetingMemberDao meetingMemberDao;
 
 	@Test
-	public void importCalendars() throws Exception {
+	void importCalendars() throws Exception {
 		long calCount = calendarDao.get().size();
-		File cals = new File(getClass().getClassLoader().getResource("org/apache/openmeetings/backup/calendar/calendars.xml").toURI());
+		File cals = new File(getClass().getClassLoader().getResource(BACKUP_ROOT + "calendar/calendars.xml").toURI());
 		backupImport.importCalendars(cals.getParentFile());
 		assertEquals(calCount + 1, calendarDao.get().size(), "Calendars should be added");
 	}
 
 	@Test
-	public void importAppointmentsSkip() throws Exception {
+	void importAppointmentsSkip() throws Exception {
 		long appCount = appointmentDao.get().size();
-		File apps = new File(getClass().getClassLoader().getResource("org/apache/openmeetings/backup/calendar/skip/appointements.xml").toURI());
+		File apps = new File(getClass().getClassLoader().getResource(BACKUP_ROOT + "calendar/skip/appointements.xml").toURI());
 		backupImport.importAppointments(apps.getParentFile());
 		assertEquals(appCount, appointmentDao.get().size(), "No Appointments should be added");
 	}
 
 	@Test
-	public void importAppointments() throws Exception {
+	void importAppointments() throws Exception {
 		long appCount = appointmentDao.get().size();
-		File apps = new File(getClass().getClassLoader().getResource("org/apache/openmeetings/backup/calendar/appointements.xml").toURI());
+		File apps = new File(getClass().getClassLoader().getResource(BACKUP_ROOT + "calendar/appointements.xml").toURI());
 		backupImport.importAppointments(apps.getParentFile());
 		assertEquals(appCount + 2, appointmentDao.get().size(), "Appointments should be added");
 

@@ -22,6 +22,7 @@ import static org.apache.openmeetings.webservice.Constants.TNS;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.jws.WebMethod;
 import javax.jws.WebParam;
@@ -39,14 +40,12 @@ import javax.ws.rs.core.MediaType;
 import org.apache.cxf.feature.Features;
 import org.apache.openmeetings.core.util.WebSocketHelper;
 import org.apache.openmeetings.db.dao.room.InvitationDao;
-import org.apache.openmeetings.db.dao.user.GroupDao;
 import org.apache.openmeetings.db.dao.user.IUserManager;
 import org.apache.openmeetings.db.dto.basic.ServiceResult;
 import org.apache.openmeetings.db.dto.basic.ServiceResult.Type;
 import org.apache.openmeetings.db.dto.room.InvitationDTO;
 import org.apache.openmeetings.db.dto.room.RoomDTO;
 import org.apache.openmeetings.db.dto.user.UserDTO;
-import org.apache.openmeetings.db.entity.basic.Client;
 import org.apache.openmeetings.db.entity.room.Invitation;
 import org.apache.openmeetings.db.entity.room.Invitation.MessageType;
 import org.apache.openmeetings.db.entity.room.Room;
@@ -54,8 +53,10 @@ import org.apache.openmeetings.db.entity.room.RoomFile;
 import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.db.manager.IClientManager;
 import org.apache.openmeetings.db.manager.IWhiteboardManager;
+import org.apache.openmeetings.db.mapper.RoomMapper;
 import org.apache.openmeetings.db.util.ws.RoomMessage;
 import org.apache.openmeetings.service.room.InvitationManager;
+import org.apache.openmeetings.webservice.error.InternalServiceException;
 import org.apache.openmeetings.webservice.error.ServiceException;
 import org.apache.wicket.util.string.Strings;
 import org.slf4j.Logger;
@@ -88,7 +89,7 @@ public class RoomWebService extends BaseWebService {
 	@Autowired
 	private InvitationManager inviteManager;
 	@Autowired
-	private GroupDao groupDao;
+	private RoomMapper rMapper;
 
 	/**
 	 * Returns an Object of Type RoomsList which contains a list of
@@ -101,11 +102,15 @@ public class RoomWebService extends BaseWebService {
 	 * @param type
 	 *            Type of public rooms need to be retrieved
 	 * @return - list of public rooms
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@GET
 	@Path("/public/{type}")
-	public List<RoomDTO> getPublic(@QueryParam("sid") @WebParam(name="sid") String sid, @PathParam("type") @WebParam(name="type") String type) {
+	public List<RoomDTO> getPublic(@QueryParam("sid") @WebParam(name="sid") String sid
+			, @PathParam("type") @WebParam(name="type") String type
+			) throws ServiceException
+	{
 		Room.Type t = Strings.isEmpty(type) ? null : Room.Type.valueOf(type);
 		return performCall(sid, User.Right.ROOM, sd -> RoomDTO.list(roomDao.getPublicRooms(t)));
 	}
@@ -116,11 +121,15 @@ public class RoomWebService extends BaseWebService {
 	 * @param sid - The SID of the User. This SID must be marked as Loggedin
 	 * @param id - the room id
 	 * @return - room with the id given
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@GET
 	@Path("/{id}")
-	public RoomDTO getRoomById(@QueryParam("sid") @WebParam(name="sid") String sid, @PathParam("id") @WebParam(name="id") Long id) {
+	public RoomDTO getRoomById(@QueryParam("sid") @WebParam(name="sid") String sid
+			, @PathParam("id") @WebParam(name="id") Long id
+			) throws ServiceException
+	{
 		return performCall(sid, User.Right.SOAP, sd -> new RoomDTO(roomDao.get(id)));
 	}
 
@@ -161,15 +170,18 @@ public class RoomWebService extends BaseWebService {
 	 *            details of the room to be created if not found
 	 *
 	 * @return - id of the room or error code
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@GET
-	@Path("/{type}/{externaltype}/{externaliid}")
+	@Path("/{type}/{externaltype}/{externalid}")
 	public RoomDTO getExternal(@WebParam(name="sid") @QueryParam("sid") String sid
 			, @PathParam("type") @WebParam(name="type") String type
 			, @PathParam("externaltype") @WebParam(name="externaltype") String externalType
 			, @PathParam("externalid") @WebParam(name="externalid") String externalId
-			, @WebParam(name="room") @QueryParam("room") RoomDTO room) {
+			, @WebParam(name="room") @QueryParam("room") RoomDTO room
+			) throws ServiceException
+	{
 		return performCall(sid, User.Right.SOAP, sd -> {
 			Room r = roomDao.getExternal(Room.Type.valueOf(type), externalType, externalId);
 			if (r == null) {
@@ -178,7 +190,7 @@ public class RoomWebService extends BaseWebService {
 				} else {
 					room.setExternalType(externalType);
 					room.setExternalId(externalId);
-					r = room.get(roomDao, groupDao, fileDao);
+					r = rMapper.get(room);
 					r = updateRtoRoom(r, sd.getUserId());
 					return new RoomDTO(r);
 				}
@@ -197,13 +209,17 @@ public class RoomWebService extends BaseWebService {
 	 *            room object
 	 *
 	 * @return - id of the USER added or error code
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@POST
 	@Path("/")
-	public RoomDTO add(@WebParam(name="sid") @QueryParam("sid") String sid, @WebParam(name="room") @FormParam("room") RoomDTO room) {
+	public RoomDTO add(@WebParam(name="sid") @QueryParam("sid") String sid
+			, @WebParam(name="room") @FormParam("room") RoomDTO room
+			) throws ServiceException
+	{
 		return performCall(sid, User.Right.SOAP, sd -> {
-			Room r = room.get(roomDao, groupDao, fileDao);
+			Room r = rMapper.get(room);
 			r = updateRtoRoom(r, sd.getUserId());
 			return new RoomDTO(r);
 		});
@@ -216,11 +232,15 @@ public class RoomWebService extends BaseWebService {
 	 * @param id - The id of the room
 	 *
 	 * @return - id of the room deleted
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@DELETE
 	@Path("/{id}")
-	public ServiceResult delete(@WebParam(name="sid") @QueryParam("sid") String sid, @WebParam(name="id") @PathParam("id") long id) {
+	public ServiceResult delete(@WebParam(name="sid") @QueryParam("sid") String sid
+			, @WebParam(name="id") @PathParam("id") long id
+			) throws ServiceException
+	{
 		return performCall(sid, User.Right.SOAP, sd -> {
 			Room r = roomDao.get(id);
 			if (r == null) {
@@ -245,11 +265,15 @@ public class RoomWebService extends BaseWebService {
 	 *            the room id
 	 *
 	 * @return - 1 in case of success, -2 otherwise
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@GET
 	@Path("/close/{id}")
-	public ServiceResult close(@WebParam(name="sid") @QueryParam("sid") String sid, @WebParam(name="id") @PathParam("id") long id) {
+	public ServiceResult close(@WebParam(name="sid") @QueryParam("sid") String sid
+			, @WebParam(name="id") @PathParam("id") long id
+			) throws ServiceException
+	{
 		return performCall(sid, User.Right.SOAP, sd -> {
 			Long userId = sd.getUserId();
 			Room room = roomDao.get(id);
@@ -276,11 +300,15 @@ public class RoomWebService extends BaseWebService {
 	 *            the room id
 	 *
 	 * @return - 1 in case of success, -2 otherwise
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@GET
 	@Path("/open/{id}")
-	public ServiceResult open(@WebParam(name="sid") @QueryParam("sid") String sid, @WebParam(name="id") @PathParam("id") long id) {
+	public ServiceResult open(@WebParam(name="sid") @QueryParam("sid") String sid
+			, @WebParam(name="id") @PathParam("id") long id
+			) throws ServiceException
+	{
 		return performCall(sid, User.Right.SOAP, sd -> {
 			Room room = roomDao.get(id);
 			room.setClosed(false);
@@ -299,11 +327,15 @@ public class RoomWebService extends BaseWebService {
 	 *            the room id
 	 *
 	 * @return - true if USER was kicked, false otherwise
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@GET
 	@Path("/kick/{id}")
-	public ServiceResult kickAll(@WebParam(name="sid") @QueryParam("sid") String sid, @WebParam(name="id") @PathParam("id") long id) {
+	public ServiceResult kickAll(@WebParam(name="sid") @QueryParam("sid") String sid
+			, @WebParam(name="id") @PathParam("id") long id
+			) throws ServiceException
+	{
 		return performCall(sid, User.Right.SOAP, sd -> {
 			boolean result = userManager.kickUsersByRoomId(id);
 			return new ServiceResult(result ? "Kicked" : "Not kicked", Type.SUCCESS);
@@ -323,6 +355,7 @@ public class RoomWebService extends BaseWebService {
 	 *            external id of USER to kick
 	 *
 	 * @return - true if USER was kicked, false otherwise
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@GET
@@ -330,7 +363,8 @@ public class RoomWebService extends BaseWebService {
 	public ServiceResult kick(@WebParam(name="sid") @QueryParam("sid") String sid
 			, @WebParam(name="id") @PathParam("id") long id
 			, @WebParam(name="externalType") @PathParam("externalType") String externalType
-			, @WebParam(name="externalId") @PathParam("externalId") String externalId)
+			, @WebParam(name="externalId") @PathParam("externalId") String externalId
+			) throws ServiceException
 	{
 		return performCall(sid, User.Right.SOAP, sd -> {
 			boolean result = userManager.kickExternal(id, externalType, externalId);
@@ -348,8 +382,11 @@ public class RoomWebService extends BaseWebService {
 	@WebMethod
 	@GET
 	@Path("/count/{roomid}")
-	public ServiceResult count(@WebParam(name="sid") @QueryParam("sid") String sid, @WebParam(name="roomid") @PathParam("roomid") Long roomId) {
-		return performCall(sid, User.Right.SOAP, sd -> new ServiceResult(String.valueOf(clientManager.listByRoom(roomId).size()), Type.SUCCESS));
+	public ServiceResult count(@WebParam(name="sid") @QueryParam("sid") String sid
+			, @WebParam(name="roomid") @PathParam("roomid") Long roomId
+			) throws ServiceException
+	{
+		return performCall(sid, User.Right.SOAP, sd -> new ServiceResult(String.valueOf(clientManager.streamByRoom(roomId).count()), Type.SUCCESS));
 	}
 
 	/**
@@ -358,17 +395,19 @@ public class RoomWebService extends BaseWebService {
 	 * @param sid The SID from UserService.getSession
 	 * @param roomId id of the room to get users
 	 * @return {@link List} of users in the room
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@GET
 	@Path("/users/{roomid}")
-	public List<UserDTO> users(@WebParam(name="sid") @QueryParam("sid") String sid, @WebParam(name="roomid") @PathParam("roomid") Long roomId) {
+	public List<UserDTO> users(@WebParam(name="sid") @QueryParam("sid") String sid
+			, @WebParam(name="roomid") @PathParam("roomid") Long roomId
+			) throws ServiceException
+	{
 		return performCall(sid, User.Right.SOAP, sd -> {
-			List<UserDTO> result = new ArrayList<>();
-			for (Client c : clientManager.listByRoom(roomId)) {
-				result.add(new UserDTO(c.getUser()));
-			}
-			return result;
+			return clientManager.streamByRoom(roomId)
+					.map(c -> new UserDTO(c.getUser()))
+					.collect(Collectors.toList());
 		});
 	}
 
@@ -379,6 +418,7 @@ public class RoomWebService extends BaseWebService {
 	 * @param invite - parameters of the invitation
 	 * @param sendmail - flag to determine if email should be sent or not
 	 * @return - serviceResult object with the result
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@WebMethod
 	@POST
@@ -386,11 +426,11 @@ public class RoomWebService extends BaseWebService {
 	public ServiceResult hash(@WebParam(name="sid") @QueryParam("sid") String sid
 			, @WebParam(name="invite") @QueryParam("invite") InvitationDTO invite
 			, @WebParam(name="sendmail") @QueryParam("sendmail") boolean sendmail
-			)
+			) throws ServiceException
 	{
 		log.debug("[hash] invite {}", invite);
 		return performCall(sid, User.Right.SOAP, sd -> {
-			Invitation i = invite.get(sd.getUserId(), userDao, roomDao);
+			Invitation i = rMapper.get(invite, sd.getUserId());
 			i = inviteDao.update(i);
 
 			if (i != null) {
@@ -398,7 +438,7 @@ public class RoomWebService extends BaseWebService {
 					try {
 						inviteManager.sendInvitationLink(i, MessageType.CREATE, invite.getSubject(), invite.getMessage(), false, null);
 					} catch (Exception e) {
-						throw new ServiceException(e.getMessage());
+						throw new InternalServiceException(e.getMessage());
 					}
 				}
 				return new ServiceResult(i.getHash(), Type.SUCCESS);
@@ -416,6 +456,7 @@ public class RoomWebService extends BaseWebService {
 	 * @param sid - The SID of the User. This SID must be marked as Loggedin
 	 * @param id - id of the room to clean
 	 * @return - serviceResult object with the result
+	 * @throws {@link ServiceException} in case of any errors
 	 */
 	@Deprecated(since = "5.0.0-M3")
 	@WebMethod
@@ -423,7 +464,7 @@ public class RoomWebService extends BaseWebService {
 	@Path("/cleanwb/{id}")
 	public ServiceResult cleanWb(@WebParam(name="sid") @QueryParam("sid") String sid
 			, @WebParam(name="id") @PathParam("id") long id
-			)
+			) throws ServiceException
 	{
 		log.debug("[cleanwb] room id {}", id);
 		return performCall(sid, User.Right.SOAP, sd -> {

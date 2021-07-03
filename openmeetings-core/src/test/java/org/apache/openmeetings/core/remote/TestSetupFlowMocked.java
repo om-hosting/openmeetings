@@ -23,25 +23,20 @@ import static org.apache.openmeetings.core.remote.KurentoHandler.MODE_TEST;
 import static org.apache.openmeetings.core.remote.KurentoHandler.PARAM_CANDIDATE;
 import static org.apache.openmeetings.core.remote.KurentoHandler.TAG_MODE;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.powermock.api.mockito.PowerMockito.whenNew;
 
 import org.apache.openmeetings.db.entity.basic.WsClient;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.kurento.client.MediaPipeline;
-import org.kurento.client.MediaProfileSpecType;
-import org.kurento.client.PlayerEndpoint;
-import org.kurento.client.RecorderEndpoint;
 import org.kurento.client.Transaction;
-import org.kurento.client.WebRtcEndpoint;
 
 import com.github.openjson.JSONObject;
 
-public class TestSetupFlowMocked extends BaseMockedTest {
+class TestSetupFlowMocked extends BaseMockedTest {
 	@Override
+	@BeforeEach
 	public void setup() {
 		super.setup();
 		doReturn(true).when(handler).isConnected();
@@ -49,72 +44,70 @@ public class TestSetupFlowMocked extends BaseMockedTest {
 	}
 
 	@Test
-	public void testMsgTestWannaRecord() throws Exception {
-		JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "wannaRecord");
-		WsClient c = new WsClient("sessionId", 0);
-		handler.onMessage(c, msg);
+	void testMsgTestWannaRecord() throws Exception {
+		runWrapped(() -> {
+			JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "wannaRecord");
+			WsClient c = new WsClient("sessionId", 0);
+			handler.onMessage(c, msg);
+		});
 	}
 
 	@Test
-	public void testMsgTestRecord1() throws Exception {
-		when(client.createMediaPipeline(any(Transaction.class))).thenReturn(mock(MediaPipeline.class));
-		WebRtcEndpoint.Builder builder = mock(WebRtcEndpoint.Builder.class);
-		whenNew(WebRtcEndpoint.Builder.class).withArguments(any(MediaPipeline.class)).thenReturn(builder);
-		when(builder.build()).thenReturn(mock(WebRtcEndpoint.class));
+	void testMsgTestRecord1() throws Exception {
+		runWrapped(() -> {
+			doReturn(mock(MediaPipeline.class)).when(client).createMediaPipeline(any(Transaction.class));
 
-		RecorderEndpoint.Builder recBuilder = mock(RecorderEndpoint.Builder.class);
-		whenNew(RecorderEndpoint.Builder.class).withArguments(any(MediaPipeline.class), anyString()).thenReturn(recBuilder);
-		when(recBuilder.stopOnEndOfStream()).thenReturn(recBuilder);
-		when(recBuilder.withMediaProfile(any(MediaProfileSpecType.class))).thenReturn(recBuilder);
-		when(recBuilder.build()).thenReturn(mock(RecorderEndpoint.class));
-
-		WsClient c = new WsClient("sessionId", 0);
-		for (boolean audio : new boolean[] {true, false}) {
-			for (boolean video : new boolean[] {true, false}) {
-				JSONObject msg = new JSONObject(MSG_BASE.toString())
-						.put("id", "record")
-						.put("sdpOffer", "")
-						.put("audio", audio)
-						.put("video", video);
-				handler.onMessage(c, msg);
+			WsClient c = new WsClient("sessionId", 0);
+			for (boolean audio : new boolean[] {true, false}) {
+				for (boolean video : new boolean[] {true, false}) {
+					JSONObject msg = new JSONObject(MSG_BASE.toString())
+							.put("id", "record")
+							.put("sdpOffer", "")
+							.put("audio", audio)
+							.put("video", video);
+					handler.onMessage(c, msg);
+				}
 			}
-		}
-		JSONObject iceMsg = new JSONObject(MSG_BASE.toString())
-				.put("id", "iceCandidate")
-				.put(PARAM_CANDIDATE, new JSONObject()
-						.put(PARAM_CANDIDATE, "candidate")
-						.put("sdpMid", "sdpMid")
-						.put("sdpMLineIndex", 1));
-		handler.onMessage(c, iceMsg);
-		PlayerEndpoint.Builder playBuilder = mock(PlayerEndpoint.Builder.class);
-		whenNew(PlayerEndpoint.Builder.class).withArguments(any(MediaPipeline.class), anyString()).thenReturn(playBuilder);
-		when(playBuilder.build()).thenReturn(mock(PlayerEndpoint.class));
-		handler.onMessage(c, new JSONObject(MSG_BASE.toString())
-				.put("id", "play")
-				.put("sdpOffer", "sdpOffer"));
-		testProcessor.destroy();
+			JSONObject iceMsg = new JSONObject(MSG_BASE.toString())
+					.put("id", "iceCandidate")
+					.put(PARAM_CANDIDATE, new JSONObject()
+							.put(PARAM_CANDIDATE, "candidate")
+							.put("sdpMid", "sdpMid")
+							.put("sdpMLineIndex", 1));
+			handler.onMessage(c, iceMsg);
+			handler.onMessage(c, new JSONObject(MSG_BASE.toString())
+					.put("id", "play")
+					.put("sdpOffer", "sdpOffer"));
+			testProcessor.destroy();
+		});
 	}
 
 	@Test
-	public void testMsgTestIceCandidate() throws Exception {
-		JSONObject msg = new JSONObject(MSG_BASE.toString())
-				.put("id", "iceCandidate")
-				.put(KurentoHandler.PARAM_CANDIDATE, new JSONObject());
-		WsClient c = new WsClient("sessionId", 0);
-		handler.onMessage(c, msg);
+	void testMsgTestIceCandidate() throws Exception {
+		runWrapped(() -> {
+			JSONObject msg = new JSONObject(MSG_BASE.toString())
+					.put("id", "iceCandidate")
+					.put(KurentoHandler.PARAM_CANDIDATE, new JSONObject());
+			WsClient c = new WsClient("sessionId", 0);
+			handler.onMessage(c, msg);
+		});
 	}
 
 	@Test
-	public void testMsgTestWannaPlay() throws Exception {
-		JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "wannaPlay");
-		WsClient c = new WsClient("sessionId", 0);
-		handler.onMessage(c, msg);
+	void testMsgTestWannaPlay() throws Exception {
+		runWrapped(() -> {
+			JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "wannaPlay");
+			WsClient c = new WsClient("sessionId", 0);
+			handler.onMessage(c, msg);
+		});
 	}
 
 	@Test
-	public void testMsgTestPlay() throws Exception {
-		JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "play");
-		WsClient c = new WsClient("sessionId", 0);
-		handler.onMessage(c, msg);
+	void testMsgTestPlay() throws Exception {
+		runWrapped(() -> {
+			JSONObject msg = new JSONObject(MSG_BASE.toString()).put("id", "play");
+			WsClient c = new WsClient("sessionId", 0);
+			handler.onMessage(c, msg);
+		});
 	}
 }

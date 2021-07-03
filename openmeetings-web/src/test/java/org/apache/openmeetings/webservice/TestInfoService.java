@@ -23,11 +23,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import org.apache.openmeetings.db.dto.basic.Info;
 import org.junit.jupiter.api.Test;
 
-public class TestInfoService extends AbstractWebServiceTest {
+class TestInfoService extends AbstractWebServiceTest {
 	private static final String INFO_SERVICE_MOUNT = "info";
 
 	@Test
-	public void infoTest() {
+	void infoTest() {
 		Info info = getClient(getInfoUrl()).path("/version").get(Info.class);
 		assertNotNull(info, "Valid info should be returned");
 		assertNotNull(info.getBuildDate(), "Valid BuildDate should be returned");

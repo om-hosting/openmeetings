@@ -45,7 +45,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class TestAppointmentAddAppointment extends AbstractWicketTester {
+class TestAppointmentAddAppointment extends AbstractWicketTester {
 	private static final Logger log = LoggerFactory.getLogger(TestAppointmentAddAppointment.class);
 
 	@Autowired
@@ -80,7 +80,7 @@ public class TestAppointmentAddAppointment extends AbstractWicketTester {
 	}
 
 	@Test
-	public void saveAppointment() throws Exception {
+	void saveAppointment() throws Exception {
 		log.debug("- saveAppointment");
 
 		Calendar start = Calendar.getInstance();
@@ -146,7 +146,7 @@ public class TestAppointmentAddAppointment extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testCreate() {
+	void testCreate() {
 		Appointment a = new Appointment();
 		a.setTitle("Test title");
 		setTime(a);

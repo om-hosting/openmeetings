@@ -18,20 +18,20 @@
  */
 package org.apache.openmeetings.util.process;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.openmeetings.util.CalendarHelper.formatMillis;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.getExtProcessTtl;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.openmeetings.util.CalendarHelper.formatMillis;
-import static org.apache.openmeetings.util.OpenmeetingsVariables.getExtProcessTtl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProcessHelper {
 	public static final Logger log = LoggerFactory.getLogger(ProcessHelper.class);
@@ -56,7 +56,7 @@ public class ProcessHelper {
 					line = br.readLine();
 				}
 			} catch (IOException ioexception) {
-				return;
+				// no-op
 			}
 		}
 
@@ -72,15 +72,11 @@ public class ProcessHelper {
 
 	private ProcessHelper() {}
 
-	private static String getCommand(String[] argv) {
-		StringBuilder tString = new StringBuilder();
-		for (int i = 0; i < argv.length; i++) {
-			tString.append(argv[i]).append(" ");
-		}
-		return tString.toString();
+	private static String getCommand(List<String> argv) {
+		return String.join(" ", argv);
 	}
 
-	private static void debugCommandStart(String desc, String[] argv) {
+	private static void debugCommandStart(String desc, List<String> argv) {
 		if (log.isDebugEnabled()) {
 			log.debug("START {} ################# ", desc);
 			log.debug(getCommand(argv));
@@ -93,16 +89,15 @@ public class ProcessHelper {
 		}
 	}
 
-	public static ProcessResult executeScript(String process, String[] argv) {
-		return executeScript(process, argv, false);
+	public static ProcessResult exec(String process, List<String> argv) {
+		return exec(process, argv, false);
 	}
 
-	public static ProcessResult executeScript(String process, String[] argv, boolean optional) {
-		Map<String, String> env = new HashMap<>();
-		return executeScript(process, argv, env, optional);
+	public static ProcessResult exec(String process, List<String> argv, boolean optional) {
+		return exec(process, argv, Map.of(), optional);
 	}
 
-	private static ProcessResult executeScript(String process, String[] argv, Map<? extends String, ? extends String> env, boolean optional) {
+	private static ProcessResult exec(String process, List<String> argv, Map<? extends String, ? extends String> env, boolean optional) {
 		ProcessResult res = new ProcessResult()
 				.setProcess(process)
 				.setOptional(optional);
@@ -135,11 +130,11 @@ public class ProcessHelper {
 			res.setExitCode(proc.exitValue())
 				.setOut(inputWatcher.toString())
 				.setError(errorWatcher.toString());
+		} catch (InterruptedException e) {
+			onException(e, start, res);
+			Thread.currentThread().interrupt();
 		} catch (Throwable t) {
-			log.error("executeScript", t);
-			res.setExitCode(-1)
-				.setError(String.format("Exception after %s of work; %s", formatMillis(System.currentTimeMillis() - start), t.getMessage()))
-				.setException(t.toString());
+			onException(t, start, res);
 		} finally {
 			if (proc != null) {
 				errorWatcher.finish();
@@ -150,5 +145,13 @@ public class ProcessHelper {
 
 		debugCommandEnd(process);
 		return res;
+	}
+
+	private static void onException(Throwable t, long start, ProcessResult res) {
+		log.error("executeScript", t);
+		res.setExitCode(-1)
+			.setError("Exception after " + formatMillis(System.currentTimeMillis() - start)
+					+ " of work; " + t.getMessage())
+			.setException(t.toString());
 	}
 }

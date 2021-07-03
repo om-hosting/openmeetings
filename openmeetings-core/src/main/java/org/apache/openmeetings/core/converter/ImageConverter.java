@@ -33,7 +33,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.DoubleConsumer;
 
@@ -111,7 +111,6 @@ public class ImageConverter extends BaseConverter {
 
 		String img = destinationFile.getName();
 		User us = userDao.get(userId);
-		us.setUpdated(new Date());
 		us.setPictureUri(img);
 		userDao.update(us, userId);
 
@@ -154,17 +153,16 @@ public class ImageConverter extends BaseConverter {
 	 *
 	 */
 	private ProcessResult convertSinglePng(File in, File out) throws IOException {
-		String[] argv = new String[] { getPathToConvert(), in.getCanonicalPath(), out.getCanonicalPath() };
+		List<String> argv = List.of(getPathToConvert(), in.getCanonicalPath(), out.getCanonicalPath());
 
-		return ProcessHelper.executeScript("convertSinglePng", argv);
+		return ProcessHelper.exec("convertSinglePng", argv);
 	}
 
 	public ProcessResult resize(File in, File out, Integer width, Integer height) throws IOException {
-		String[] argv = new String[] { getPathToConvert()
+		List<String> argv = List.of(getPathToConvert()
 				, "-resize", (width == null ? "" : width) + (height == null ? "" : "x" + height)
-				, in.getCanonicalPath(), out.getCanonicalPath()
-				};
-		return ProcessHelper.executeScript("resize", argv);
+				, in.getCanonicalPath(), out.getCanonicalPath());
+		return ProcessHelper.exec("resize", argv);
 	}
 
 	/**
@@ -178,15 +176,15 @@ public class ImageConverter extends BaseConverter {
 	 */
 	public ProcessResultList convertDocument(FileItem f, File pdf, ProcessResultList logs, Optional<DoubleConsumer> progress) throws IOException {
 		log.debug("convertDocument");
-		String[] argv = new String[] {
-			getPathToConvert()
-			, "-density", getDpi()
-			, pdf.getCanonicalPath()
-			, "+profile", "'*'"
-			, "-quality", getQuality()
-			, new File(pdf.getParentFile(), PAGE_TMPLT).getCanonicalPath()
-			};
-		ProcessResult res = ProcessHelper.executeScript("convert PDF to images", argv);
+		List<String> argv = List.of(
+				getPathToConvert()
+				, "-density", getDpi()
+				, "-define", "pdf:use-cropbox=true"
+				, pdf.getCanonicalPath()
+				, "+profile", "'*'"
+				, "-quality", getQuality()
+				, new File(pdf.getParentFile(), PAGE_TMPLT).getCanonicalPath());
+		ProcessResult res = ProcessHelper.exec("convert PDF to images", argv);
 		logs.add(res);
 		progress.ifPresent(theProgress -> theProgress.accept(1. / 4));
 		if (res.isOk()) {

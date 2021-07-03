@@ -21,7 +21,6 @@ package org.apache.openmeetings.web.user.dashboard;
 import org.apache.openmeetings.web.app.Application;
 import org.apache.wicket.model.Model;
 import org.wicketstuff.dashboard.AbstractWidget;
-import org.wicketstuff.dashboard.Widget;
 import org.wicketstuff.dashboard.WidgetLocation;
 import org.wicketstuff.dashboard.web.WidgetView;
 
@@ -29,20 +28,21 @@ public class StartWidget extends AbstractWidget {
 	private static final long serialVersionUID = 1L;
 
 	public StartWidget() {
-		super();
 		location = new WidgetLocation(1, 0);
-		init();
 	}
 
 	@Override
-	public void init() {
-		super.init();
-		title = Application.getString("widget.start.title");
-		id = "StartWidget";
+	public String getId() {
+		return "StartWidget";
+	}
+
+	@Override
+	public String getTitle() {
+		return Application.getString("widget.start.title");
 	}
 
 	@Override
 	public WidgetView createView(String viewId) {
-		return new StartWidgetView(viewId, new Model<Widget>(this));
+		return new StartWidgetView(viewId, new Model<>(this));
 	}
 }

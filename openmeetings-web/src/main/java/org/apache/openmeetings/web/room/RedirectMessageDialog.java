@@ -33,7 +33,6 @@ public class RedirectMessageDialog extends IconTextModal {
 	private final String labelId;
 	private final String url;
 	private final boolean autoOpen;
-	private Component label;
 
 	public RedirectMessageDialog(String id, String labelId, boolean autoOpen, String url) {
 		super(id);
@@ -47,7 +46,8 @@ public class RedirectMessageDialog extends IconTextModal {
 		header(new ResourceModel("204"));
 		setCloseOnEscapeKey(false);
 		show(autoOpen);
-		withLabel(labelId);
+		withLabel(new ResourceModel(labelId));
+		getLabel().setOutputMarkupId(true);
 		withErrorIcon();
 		super.onInitialize();
 		if (autoOpen) {
@@ -56,7 +56,7 @@ public class RedirectMessageDialog extends IconTextModal {
 	}
 
 	private void startTimer(IPartialPageRequestHandler handler) {
-		label.add(new OmTimerBehavior(DELAY, labelId) {
+		getLabel().add(new OmTimerBehavior(DELAY, labelId) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -69,7 +69,7 @@ public class RedirectMessageDialog extends IconTextModal {
 			}
 		});
 		if (handler != null) {
-			handler.add(label);
+			handler.add(getLabel());
 		}
 	}
 
@@ -78,5 +78,10 @@ public class RedirectMessageDialog extends IconTextModal {
 		super.show(handler);
 		startTimer(handler);
 		return this;
+	}
+
+	@Override
+	protected Component createHeaderCloseButton(String id) {
+		return super.createHeaderCloseButton(id).setVisible(false);
 	}
 }

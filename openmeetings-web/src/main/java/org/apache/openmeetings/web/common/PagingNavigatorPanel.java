@@ -18,6 +18,8 @@
  */
 package org.apache.openmeetings.web.common;
 
+import static org.apache.openmeetings.web.common.BasePanel.EVT_CHANGE;
+
 import java.util.List;
 
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -34,11 +36,11 @@ public abstract class PagingNavigatorPanel extends Panel {
 	private final DataView<?> dataView;
 	private final List<Integer> numbers;
 
-	public PagingNavigatorPanel(String id, final DataView<?> dataView) {
+	protected PagingNavigatorPanel(String id, final DataView<?> dataView) {
 		this(id, dataView, List.of(10, 25, 50, 75, 100, 200), 50);
 	}
 
-	public PagingNavigatorPanel(String id, final DataView<?> dataView, List<Integer> numbers, int entitiesPerPage) {
+	protected PagingNavigatorPanel(String id, final DataView<?> dataView, List<Integer> numbers, int entitiesPerPage) {
 		super(id);
 		setOutputMarkupId(true);
 		this.entitiesPerPage = entitiesPerPage;
@@ -52,19 +54,14 @@ public abstract class PagingNavigatorPanel extends Panel {
 		dataView.setItemsPerPage(entitiesPerPage);
 		final Form<Void> f = new Form<>("pagingForm");
 		f.add(new OmPagingNavigator("navigator", dataView).setOutputMarkupId(true))
-			.add(new DropDownChoice<>("entitiesPerPage", new PropertyModel<Integer>(this, "entitiesPerPage"), numbers)
-				.add(new AjaxFormComponentUpdatingBehavior("change") {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onUpdate(AjaxRequestTarget target) {
-						long newPage = dataView.getCurrentPage() * dataView.getItemsPerPage() / entitiesPerPage;
-						dataView.setItemsPerPage(entitiesPerPage);
-						dataView.setCurrentPage(newPage);
-						target.add(f);
-						PagingNavigatorPanel.this.onEvent(target);
-					}
-				}));
+			.add(new DropDownChoice<>("entitiesPerPage", new PropertyModel<>(this, "entitiesPerPage"), numbers)
+				.add(AjaxFormComponentUpdatingBehavior.onUpdate(EVT_CHANGE, target -> {
+					long newPage = dataView.getCurrentPage() * dataView.getItemsPerPage() / entitiesPerPage;
+					dataView.setItemsPerPage(entitiesPerPage);
+					dataView.setCurrentPage(newPage);
+					target.add(f);
+					PagingNavigatorPanel.this.onEvent(target);
+				})));
 		add(f.setOutputMarkupId(true));
 	}
 

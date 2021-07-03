@@ -61,7 +61,7 @@ public class ResetPasswordDialog extends Modal<String> {
 		show(true);
 
 		add(form);
-		addButton(new BootstrapAjaxButton("button", new ResourceModel("327"), form, Buttons.Type.Outline_Primary) {
+		addButton(new BootstrapAjaxButton(BUTTON_MARKUP_ID, new ResourceModel("327"), form, Buttons.Type.Outline_Primary) {
 			private static final long serialVersionUID = 1L;
 		}); // Reset
 
@@ -83,10 +83,10 @@ public class ResetPasswordDialog extends Modal<String> {
 			add(feedback.setOutputMarkupId(true));
 			add(login = new TextField<>("login", Model.of(user.getLogin())));
 			login.setOutputMarkupId(true);
-			add(password = new PasswordTextField("password", new Model<String>()));
+			add(password = new PasswordTextField("password", new Model<>()));
 			password.setLabel(new ResourceModel("328")).setOutputMarkupId(true);
 			password.setRequired(false).add(new StrongPasswordValidator(user));
-			add(confirmPassword = new PasswordTextField("confirmPassword", new Model<String>()));
+			add(confirmPassword = new PasswordTextField("confirmPassword", new Model<>()));
 			confirmPassword.setLabel(new ResourceModel("116")).setOutputMarkupId(true);
 
 			add(new AjaxButton("submit") { // FAKE button so "submit-on-enter" works as expected

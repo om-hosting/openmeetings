@@ -33,6 +33,8 @@ import org.apache.openmeetings.web.common.UploadableProfileImagePanel;
 import org.apache.openmeetings.web.pages.PrivacyPage;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormValidatingBehavior;
+import org.apache.wicket.markup.head.IHeaderResponse;
+import org.apache.wicket.markup.head.OnDomReadyHeaderItem;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.PasswordTextField;
 import org.apache.wicket.markup.html.link.BookmarkablePageLink;
@@ -52,7 +54,7 @@ import de.agilecoders.wicket.core.markup.html.bootstrap.button.Buttons;
 public class EditProfileForm extends Form<User> {
 	private static final long serialVersionUID = 1L;
 	private static final Logger log = LoggerFactory.getLogger(EditProfileForm.class);
-	private final PasswordTextField passwd = new PasswordTextField("passwd", new Model<String>());
+	private final PasswordTextField passwd = new PasswordTextField("passwd", new Model<>());
 	private final GeneralUserForm userForm;
 	private final ChangePasswordDialog chPwdDlg;
 	private boolean checkPassword;
@@ -146,6 +148,7 @@ public class EditProfileForm extends Form<User> {
 					Thread.sleep(6 + (long)(10 * Math.random() * 1000));
 				} catch (InterruptedException e) {
 					log.error("Unexpected exception while sleeping", e);
+					Thread.currentThread().interrupt();
 				}
 			}
 		}
@@ -155,5 +158,11 @@ public class EditProfileForm extends Form<User> {
 	@Override
 	protected IMarkupSourcingStrategy newMarkupSourcingStrategy() {
 		return new PanelMarkupSourcingStrategy(false);
+	}
+
+	@Override
+	public void renderHead(IHeaderResponse response) {
+		super.renderHead(response);
+		response.render(OnDomReadyHeaderItem.forScript("$('.profile-edit-form .my-info').off().click(function() {showUserInfo(" + getUserId() + ");});"));
 	}
 }

@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.github.openjson.JSONObject;
-import com.hazelcast.core.IMap;
+import com.hazelcast.map.IMap;
 
 @Component
 public class QuickPollManager {
@@ -58,7 +58,7 @@ public class QuickPollManager {
 		log.debug("Starting quick poll, room: {}", roomId);
 		IMap<Long, Map<Long, Boolean>> polls = map();
 		polls.lock(roomId);
-		polls.putIfAbsent(roomId, new ConcurrentHashMap<Long, Boolean>());
+		polls.putIfAbsent(roomId, new ConcurrentHashMap<>());
 		polls.unlock(roomId);
 		WebSocketHelper.sendRoom(new TextRoomMessage(roomId, c, Type.QUICK_POLL_UPDATED, c.getUid()));
 	}

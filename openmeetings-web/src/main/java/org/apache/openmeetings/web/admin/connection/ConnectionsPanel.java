@@ -19,16 +19,20 @@
 package org.apache.openmeetings.web.admin.connection;
 
 import static org.apache.openmeetings.util.OpenmeetingsVariables.ATTR_CLASS;
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelConfirm;
+import static org.apache.openmeetings.web.app.WebSession.getDateFormat;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelConfirm;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.openmeetings.core.remote.KurentoHandler;
+import org.apache.openmeetings.core.remote.StreamProcessor;
 import org.apache.openmeetings.db.dao.user.IUserManager;
+import org.apache.openmeetings.db.entity.IDataProviderEntity;
 import org.apache.openmeetings.db.entity.basic.Client;
 import org.apache.openmeetings.web.admin.AdminBasePanel;
 import org.apache.openmeetings.web.admin.SearchableDataView;
@@ -38,6 +42,7 @@ import org.apache.openmeetings.web.data.SearchableDataProvider;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.ajax.AjaxEventBehavior;
 import org.apache.wicket.ajax.AjaxRequestTarget;
+import org.apache.wicket.authroles.authorization.strategies.role.annotations.AuthorizeInstantiation;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.repeater.Item;
@@ -48,92 +53,111 @@ import org.apache.wicket.spring.injection.annot.SpringBean;
 import de.agilecoders.wicket.core.markup.html.bootstrap.button.BootstrapAjaxLink;
 import de.agilecoders.wicket.core.markup.html.bootstrap.button.Buttons;
 
+@AuthorizeInstantiation({"ADMIN", "ADMIN_CONNECTIONS"})
 public class ConnectionsPanel extends AdminBasePanel {
 	private static final long serialVersionUID = 1L;
 	@SpringBean
 	private ClientManager cm;
 	@SpringBean
-	private KurentoHandler scm;
+	private KurentoHandler kHandler;
+	@SpringBean
+	private StreamProcessor streamProcessor;
 	@SpringBean
 	private IUserManager userManager;
 
 	public ConnectionsPanel(String id) {
 		super(id);
+	}
 
-		SearchableDataProvider<Client> sdp = new SearchableDataProvider<>(null) {
+	@Override
+	protected void onInitialize() {
+		super.onInitialize();
+
+		SearchableDataProvider<IDataProviderEntity> sdp = new SearchableDataProvider<>(null) {
 			private static final long serialVersionUID = 1L;
 
-			private List<Client> list() {
-				List<Client> l = new ArrayList<>();
-				l.addAll(cm.list());
-				return l;
+			private List<IDataProviderEntity> getConnections() {
+				return Stream.concat(cm.stream()
+						, streamProcessor.getStreams()
+						.stream()
+						.map(KStreamDto::new)
+					).collect(Collectors.toList());
 			}
 
 			@Override
-			public Iterator<? extends Client> iterator(long first, long count) {
-				List<Client> l = list();
+			public Iterator<? extends IDataProviderEntity> iterator(long first, long count) {
+				List<IDataProviderEntity> l = getConnections();
 				return l.subList((int)Math.max(0, first), (int)Math.min(first + count, l.size())).iterator();
 			}
 
 			@Override
 			public long size() {
-				return list().size();
+				return getConnections().size();
 			}
 		};
 		final WebMarkupContainer container = new WebMarkupContainer("container");
 		final WebMarkupContainer details = new WebMarkupContainer("details");
-		SearchableDataView<Client> dataView = new SearchableDataView<>("clientList", sdp) {
+		SearchableDataView<IDataProviderEntity> dataView = new SearchableDataView<>("clientList", sdp) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			protected void populateItem(final Item<Client> item) {
-				Client c = item.getModelObject();
-				item.add(new Label("type", "html5"));
-				item.add(new Label("login", c.getUser().getLogin()));
-				item.add(new Label("since", c.getConnectedSince()));
-				item.add(new Label("scope", c.getRoom() == null ? "html5" : "" + c.getRoom().getId()));
-				item.add(new Label("server", c.getServerId()));
-				item.add(new BootstrapAjaxLink<String>("kick", null, Buttons.Type.Outline_Danger, new ResourceModel("603")) {
-					private static final long serialVersionUID = 1L;
-					{
-						setSize(Buttons.Size.Small);
-					}
-
-					@Override
-					public void onClick(AjaxRequestTarget target) {
-						cm.invalidate(c.getUserId(), c.getSessionId());
-						target.add(container, details.setVisible(false));
-					}
-				}.add(newOkCancelConfirm(this, getString("605"))));
-				item.add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						Field[] ff = item.getModelObject().getClass().getDeclaredFields();
-						RepeatingView lines = new RepeatingView("line");
-						Client c = item.getModelObject();
-						for (Field f : ff) {
-							int mod = f.getModifiers();
-							if (Modifier.isStatic(mod) || Modifier.isTransient(mod)) {
-								continue;
-							}
-							WebMarkupContainer line = new WebMarkupContainer(lines.newChildId());
-							line.add(new Label("name", f.getName()));
-							String val = "";
-							try {
-								f.setAccessible(true);
-								val = "" + f.get(c);
-							} catch (Exception e) {
-								//noop
-							}
-							line.add(new Label("value", val));
-							lines.add(line);
+			protected void populateItem(final Item<IDataProviderEntity> item) {
+				if (item.getModelObject() instanceof KStreamDto) {
+					KStreamDto kStream = (KStreamDto)item.getModelObject();
+					item.add(new Label("type", kStream.getType() + " " + kStream.getStreamType()));
+					item.add(new Label("login", kStream.getUid()));
+					item.add(new Label("since", getDateFormat().format(kStream.getConnectedSince())));
+					item.add(new Label("scope", kStream.getRoomId()));
+					item.add(new Label("server", ""));
+					item.add(new Label("kick", ""));
+				}
+				if (item.getModelObject() instanceof Client) {
+					Client c = (Client)item.getModelObject();
+					item.add(new Label("type", "html5"));
+					item.add(new Label("login", c.getUser().getLogin()));
+					item.add(new Label("since", getDateFormat().format(c.getConnectedSince())));
+					item.add(new Label("scope", c.getRoom() == null ? "html5" : "" + c.getRoom().getId()));
+					item.add(new Label("server", c.getServerId()));
+					item.add(new BootstrapAjaxLink<String>("kick", null, Buttons.Type.Outline_Danger, new ResourceModel("603")) {
+						private static final long serialVersionUID = 1L;
+						{
+							setSize(Buttons.Size.Small);
 						}
-						details.addOrReplace(lines);
-						target.add(details.setVisible(true));
+
+						@Override
+						public void onClick(AjaxRequestTarget target) {
+							cm.invalidate(c.getUserId(), c.getSessionId());
+							target.add(container, details.setVisible(false));
+						}
+					}.add(newOkCancelConfirm(this, getString("605"))));
+				}
+
+				item.add(AjaxEventBehavior.onEvent(EVT_CLICK, target -> {
+					Field[] ff = (item.getModelObject() instanceof KStreamDto ? KStreamDto.class : Client.class).getDeclaredFields();
+					RepeatingView lines = new RepeatingView("line");
+					Object c = item.getModelObject();
+
+					for (Field f : ff) {
+						int mod = f.getModifiers();
+						if (Modifier.isStatic(mod) || Modifier.isTransient(mod)) {
+							continue;
+						}
+						WebMarkupContainer line = new WebMarkupContainer(lines.newChildId());
+						line.add(new Label("name", f.getName()));
+						String val = "";
+						try {
+							f.setAccessible(true);
+							val = "" + f.get(c);
+						} catch (Exception e) {
+							//noop
+						}
+						line.add(new Label("value", val));
+						lines.add(line);
 					}
-				});
+					details.addOrReplace(lines);
+					target.add(details.setVisible(true));
+				}));
+
 				item.add(AttributeModifier.append(ATTR_CLASS, ROW_CLASS));
 			}
 		};

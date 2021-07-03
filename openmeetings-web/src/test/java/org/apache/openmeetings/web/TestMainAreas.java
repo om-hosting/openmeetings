@@ -24,6 +24,7 @@ import static org.apache.openmeetings.web.util.OmUrlFragment.TYPE_CONFIG;
 import static org.apache.openmeetings.web.util.OmUrlFragment.TYPE_CONNECTION;
 import static org.apache.openmeetings.web.util.OmUrlFragment.TYPE_EDIT;
 import static org.apache.openmeetings.web.util.OmUrlFragment.TYPE_EMAIL;
+import static org.apache.openmeetings.web.util.OmUrlFragment.TYPE_EXTRA;
 import static org.apache.openmeetings.web.util.OmUrlFragment.TYPE_GROUP;
 import static org.apache.openmeetings.web.util.OmUrlFragment.TYPE_LANG;
 import static org.apache.openmeetings.web.util.OmUrlFragment.TYPE_LDAP;
@@ -45,6 +46,7 @@ import org.apache.openmeetings.web.admin.backup.BackupPanel;
 import org.apache.openmeetings.web.admin.configurations.ConfigsPanel;
 import org.apache.openmeetings.web.admin.connection.ConnectionsPanel;
 import org.apache.openmeetings.web.admin.email.EmailPanel;
+import org.apache.openmeetings.web.admin.extra.ExtraPanel;
 import org.apache.openmeetings.web.admin.groups.GroupsPanel;
 import org.apache.openmeetings.web.admin.labels.LangPanel;
 import org.apache.openmeetings.web.admin.ldaps.LdapsPanel;
@@ -60,24 +62,22 @@ import org.apache.openmeetings.web.room.RoomPanel;
 import org.apache.openmeetings.web.room.wb.AbstractWbPanel;
 import org.apache.openmeetings.web.user.calendar.CalendarPanel;
 import org.apache.openmeetings.web.user.dashboard.OmDashboardPanel;
-import org.apache.openmeetings.web.user.profile.SettingsPanel;
+import org.apache.openmeetings.web.user.profile.EditProfilePanel;
+import org.apache.openmeetings.web.user.profile.MessagesContactsPanel;
 import org.apache.openmeetings.web.user.record.RecordingsPanel;
 import org.apache.openmeetings.web.user.rooms.RoomsSelectorPanel;
 import org.apache.openmeetings.web.util.OmUrlFragment.AreaKeys;
 import org.apache.wicket.authorization.UnauthorizedInstantiationException;
 import org.apache.wicket.behavior.AbstractAjaxBehavior;
-import org.apache.wicket.extensions.markup.html.tabs.ITab;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import de.agilecoders.wicket.core.markup.html.bootstrap.tabs.AjaxBootstrapTabbedPanel;
-
-public class TestMainAreas extends AbstractWicketTester {
+class TestMainAreas extends AbstractWicketTester {
 	private static final Logger log = LoggerFactory.getLogger(TestMainAreas.class);
 
 	@Test
-	public void testDashboard() throws OmException {
+	void testDashboard() throws OmException {
 		testArea(regularUsername, p -> {
 			tester.assertComponent(PATH_CHILD, OmDashboardPanel.class);
 		});
@@ -117,190 +117,193 @@ public class TestMainAreas extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testCalendar() throws OmException {
+	void testCalendar() throws OmException {
 		checkArea(AreaKeys.user, TYPE_CALENDAR, CalendarPanel.class, regularUsername);
 	}
 
 	@Test
-	public void testRecordings() throws OmException {
+	void testRecordings() throws OmException {
 		checkArea(AreaKeys.user, TYPE_RECORDINGS, RecordingsPanel.class, regularUsername);
 	}
 
 	@Test
-	public void testRoomsPublic() throws OmException {
+	void testRoomsPublic() throws OmException {
 		checkArea(AreaKeys.rooms, TYPE_PUBLIC, RoomsSelectorPanel.class, regularUsername);
 	}
 
 	@Test
-	public void testRoomsGroup() throws OmException {
+	void testRoomsGroup() throws OmException {
 		checkArea(AreaKeys.rooms, TYPE_GROUP, RoomsSelectorPanel.class, regularUsername);
 	}
 
 	@Test
-	public void testRoomsMy() throws OmException {
+	void testRoomsMy() throws OmException {
 		checkArea(AreaKeys.rooms, TYPE_MY, RoomsSelectorPanel.class, regularUsername);
 	}
 
 	@Test
-	public void testRoomsProfileMessages() throws OmException {
-		checkArea(AreaKeys.profile, TYPE_MESSAGES, SettingsPanel.class, p -> {
-			@SuppressWarnings("unchecked")
-			AjaxBootstrapTabbedPanel<ITab> tp = (AjaxBootstrapTabbedPanel<ITab>)p.get("main-container:main:contents:child:tabs");
-			for (int i = 0; i < tp.getTabs().size(); ++i) {
-				tester.executeBehavior((AbstractAjaxBehavior)tp.get("tabs-container:tabs:" + i + ":link").getBehaviorById(0)); // activate
-				//add visibility check
-			}
-		}, regularUsername);
+	void testProfileMessages() throws OmException {
+		checkArea(AreaKeys.profile, TYPE_MESSAGES, MessagesContactsPanel.class, regularUsername);
 	}
 
 	@Test
-	public void testRoomsProfileEdit() throws OmException {
-		checkArea(AreaKeys.profile, TYPE_EDIT, SettingsPanel.class, regularUsername);
+	void testProfileEdit() throws OmException {
+		checkArea(AreaKeys.profile, TYPE_EDIT, EditProfilePanel.class, regularUsername);
 	}
 
 	@Test
-	public void testNonExistent() throws OmException {
+	void testNonExistent() throws OmException {
 		checkArea(AreaKeys.profile, "bla", OmDashboardPanel.class, regularUsername);
 	}
 
 	@Test
-	public void testAdminUsers() throws OmException {
+	void testAdminUsers() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_USER, UsersPanel.class, adminUsername, groupAdminUsername);
 	}
 
 	@Test
-	public void testAdminUsers1() throws OmException {
+	void testAdminUsers1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_USER, regularUsername);
 	}
 
 	@Test
-	public void testAdminConnections() throws OmException {
+	void testAdminConnections() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_CONNECTION, ConnectionsPanel.class, adminUsername);
 	}
 
 	@Test
-	public void testAdminConnections1() throws OmException {
+	void testAdminConnections1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_CONNECTION, groupAdminUsername, regularUsername);
 	}
 
 	@Test
-	public void testAdminGroups() throws OmException {
+	void testAdminGroups() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_GROUP, GroupsPanel.class, adminUsername, groupAdminUsername);
 	}
 
 	@Test
-	public void testAdminGroups1() throws OmException {
+	void testAdminGroups1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_GROUP, regularUsername);
 	}
 
 	@Test
-	public void testAdminRooms() throws OmException {
+	void testAdminRooms() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_ROOM, RoomsPanel.class, adminUsername, groupAdminUsername);
 	}
 
 	@Test
-	public void testAdminRooms1() throws OmException {
+	void testAdminRooms1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_ROOM, regularUsername);
 	}
 
 	@Test
-	public void testAdminConfigs() throws OmException {
+	void testAdminConfigs() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_CONFIG, ConfigsPanel.class, adminUsername);
 	}
 
 	@Test
-	public void testAdminConfigs1() throws OmException {
+	void testAdminConfigs1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_CONFIG, groupAdminUsername, regularUsername);
 	}
 
 	@Test
-	public void testAdminLang() throws OmException {
+	void testAdminLang() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_LANG, LangPanel.class, adminUsername);
 	}
 
 	@Test
-	public void testAdminLang1() throws OmException {
+	void testAdminLang1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_LANG, groupAdminUsername, regularUsername);
 	}
 
 	@Test
-	public void testAdminLdap() throws OmException {
+	void testAdminLdap() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_LDAP, LdapsPanel.class, adminUsername);
 	}
 
 	@Test
-	public void testAdminLdap1() throws OmException {
+	void testAdminLdap1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_LDAP, groupAdminUsername, regularUsername);
 	}
 
 	@Test
-	public void testAdminOauth() throws OmException {
+	void testAdminOauth() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_OAUTH2, OAuthPanel.class, adminUsername);
 	}
 
 	@Test
-	public void testAdminOauth1() throws OmException {
+	void testAdminOauth1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_OAUTH2, groupAdminUsername, regularUsername);
 	}
 
 	@Test
-	public void testAdminBackup() throws OmException {
+	void testAdminBackup() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_BACKUP, BackupPanel.class, adminUsername);
 	}
 
 	@Test
-	public void testAdminBackup1() throws OmException {
+	void testAdminBackup1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_BACKUP, groupAdminUsername, regularUsername);
 	}
 
 	@Test
-	public void testAdminEmail() throws OmException {
+	void testAdminEmail() throws OmException {
 		checkArea(AreaKeys.admin, TYPE_EMAIL, EmailPanel.class, adminUsername);
 	}
 
 	@Test
-	public void testAdminEmail1() throws OmException {
+	void testAdminEmail1() throws OmException {
 		checkUnauthArea(AreaKeys.admin, TYPE_EMAIL, groupAdminUsername, regularUsername);
 	}
 
 	@Test
-	public void testAdminBad() throws OmException {
+	void testAdminExtras() throws OmException {
+		checkArea(AreaKeys.admin, TYPE_EXTRA, ExtraPanel.class, adminUsername, groupAdminUsername);
+	}
+
+	@Test
+	void testAdminExtras1() throws OmException {
+		checkUnauthArea(AreaKeys.admin, TYPE_EXTRA, regularUsername);
+	}
+
+	@Test
+	void testAdminBad() throws OmException {
 		checkArea(AreaKeys.admin, "BAD", OmDashboardPanel.class, adminUsername);
 	}
 
 	private void testRoom(Long id) throws OmException {
 		checkArea(AreaKeys.room, String.valueOf(id), RoomPanel.class, p -> {
 			RoomPanel rp = (RoomPanel)p.get(PATH_CHILD);
-			tester.executeBehavior((AbstractAjaxBehavior)rp.getBehaviorById(0)); //room enter
+			tester.executeBehavior((AbstractAjaxBehavior)rp.get("roomContainer").getBehaviorById(0)); //room enter
 			tester.assertComponent(PATH_CHILD + ":roomContainer:wb-area:whiteboard", AbstractWbPanel.class);
 		}, regularUsername);
 	}
 
 	@Test
-	public void testRoom5() throws OmException {
+	void testRoom5() throws OmException {
 		// public presentation room
 		testRoom(5L);
 	}
 
 	@Test
-	public void testRoom1() throws OmException {
+	void testRoom1() throws OmException {
 		//public interview room
 		testRoom(1L);
 	}
 
 	@Test
-	public void testRoomBad() throws OmException {
+	void testRoomBad() throws OmException {
 		checkArea(AreaKeys.room, "BAD", OmDashboardPanel.class, adminUsername);
 	}
 
 	@Test
-	public void testInstallNotAccessible() {
+	void testInstallNotAccessible() {
 		tester.startPage(InstallWizardPage.class);
 		tester.assertRenderedPage(SignInPage.class);
 	}
 
 	@Test
-	public void testUnavailNotAccessible() {
+	void testUnavailNotAccessible() {
 		tester.startPage(NotInitedPage.class);
 		tester.assertRenderedPage(SignInPage.class);
 	}

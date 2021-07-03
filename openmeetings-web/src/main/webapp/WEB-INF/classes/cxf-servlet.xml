@@ -23,6 +23,7 @@
 		xmlns:context="http://www.springframework.org/schema/context"
 		xmlns:jaxrs="http://cxf.apache.org/jaxrs"
 		xmlns:jaxws="http://cxf.apache.org/jaxws"
+		xmlns:p="http://www.springframework.org/schema/p"
 		xsi:schemaLocation="
 			http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
 			http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
@@ -35,6 +36,8 @@
 
 	<context:annotation-config />
 	<context:component-scan base-package="org.apache.openmeetings.webservice" />
+	<bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer"
+		p:location="classpath:openmeetings.properties" />
 
 	<!-- (writeXsiType=false) -->
 	<jaxrs:server id="server" address="/">
@@ -51,10 +54,11 @@
 			<ref bean="wbWebService"/>
 		</jaxrs:serviceBeans>
 		<jaxrs:providers>
-			<bean id="appDtoMessageBodyWriter" class="org.apache.openmeetings.webservice.util.AppointmentMessageBodyWriter" />
-			<bean id="appDtoListMessageBodyWriter" class="org.apache.openmeetings.webservice.util.AppointmentListMessageBodyWriter" />
-			<bean id="userDtoMessageBodyWriter" class="org.apache.openmeetings.webservice.util.UserMessageBodyWriter" />
-			<bean id="omParamProvider" class="org.apache.openmeetings.webservice.util.OmParamConverterProvider"/>
+			<bean class="org.apache.openmeetings.webservice.util.RateLimitRequestFilter"/>
+			<bean class="org.apache.openmeetings.webservice.util.AppointmentMessageBodyWriter"/>
+			<bean class="org.apache.openmeetings.webservice.util.AppointmentListMessageBodyWriter"/>
+			<bean class="org.apache.openmeetings.webservice.util.UserMessageBodyWriter"/>
+			<bean class="org.apache.openmeetings.webservice.util.OmParamConverterProvider"/>
 		</jaxrs:providers>
 		<jaxrs:outInterceptors>
 			<bean id="allowOriginProvider" class="org.apache.openmeetings.webservice.util.AllowOriginProvider"/>

@@ -57,7 +57,7 @@ import org.junit.jupiter.api.Test;
 import com.github.openjson.JSONArray;
 import com.github.openjson.JSONObject;
 
-public class TestCalendarService extends AbstractWebServiceTest {
+class TestCalendarService extends AbstractWebServiceTest {
 	public static final String CALENDAR_SERVICE_MOUNT = "calendar";
 
 	private void actualTest(Room r) throws Exception {
@@ -77,12 +77,12 @@ public class TestCalendarService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testGetByAppRoom() throws Exception {
+	void testGetByAppRoom() throws Exception {
 		actualTest(null);
 	}
 
 	@Test
-	public void testGetByPublicRoom() throws Exception {
+	void testGetByPublicRoom() throws Exception {
 		actualTest(getBean(RoomDao.class).get(5L)); //default public presentation room
 	}
 
@@ -145,12 +145,12 @@ public class TestCalendarService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCreate() throws Exception {
+	void testCreate() throws Exception {
 		createApp("test");
 	}
 
 	@Test
-	public void testDelete() {
+	void testDelete() {
 		ServiceResult sr = login();
 		Response resp = getClient(getCalendarUrl())
 				.path("/" + Long.MAX_VALUE) //non-existent ID
@@ -161,7 +161,7 @@ public class TestCalendarService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCreateWithOmMm() throws Exception {
+	void testCreateWithOmMm() throws Exception {
 		JSONObject o = createAppointment("test")
 				.put("meetingMembers", new JSONArray()
 						.put(new JSONObject().put("user", new JSONObject()
@@ -219,7 +219,7 @@ public class TestCalendarService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCreateWithGuests() throws Exception {
+	void testCreateWithGuests() throws Exception {
 		String sid = loginNewUser();
 		AppointmentDTO dto = createEventWithGuests(sid);
 
@@ -243,7 +243,7 @@ public class TestCalendarService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCreateWithGuestsCleanOne() throws Exception {
+	void testCreateWithGuestsCleanOne() throws Exception {
 		String sid = loginNewUser();
 		AppointmentDTO dto = createEventWithGuests(sid);
 		List<MeetingMemberDTO> initialList = new ArrayList<>(dto.getMeetingMembers());
@@ -268,14 +268,14 @@ public class TestCalendarService extends AbstractWebServiceTest {
 		assertEquals(1, dto.getMeetingMembers().size(), "DTO should have 1 attendees");
 
 		assertNull(mmDao.get(mmId), "Meeting member should deleted");
-		assertNull(getBean(InvitationDao.class).getByHash(hash, true, false), "Invitation should deleted");
+		assertNull(getBean(InvitationDao.class).getByHash(hash, true), "Invitation should deleted");
 		User uc = getBean(UserDao.class).get(mmUserId);
 		assertNotNull(uc, "Meeting member user should not be deleted");
 		assertFalse(uc.isDeleted(), "Meeting member user should not be deleted");
 	}
 
 	@Test
-	public void testGetByTitle() throws Exception {
+	void testGetByTitle() throws Exception {
 		String title = "title" + randomUUID().toString();
 		String sid = createApp(title);
 		@SuppressWarnings("unchecked")

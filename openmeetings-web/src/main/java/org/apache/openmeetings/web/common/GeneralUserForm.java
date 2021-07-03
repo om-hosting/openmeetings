@@ -24,7 +24,6 @@ import static org.apache.openmeetings.web.app.WebSession.AVAILABLE_TIMEZONES;
 import static org.apache.openmeetings.web.app.WebSession.getRights;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +33,7 @@ import org.apache.openmeetings.db.entity.user.Group;
 import org.apache.openmeetings.db.entity.user.GroupUser;
 import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.db.entity.user.User.Salutation;
+import org.apache.openmeetings.web.common.datetime.AjaxOmDatePicker;
 import org.apache.openmeetings.web.util.CountryDropDown;
 import org.apache.openmeetings.web.util.RestrictiveChoiceProvider;
 import org.apache.wicket.extensions.validation.validator.RfcCompliantEmailAddressValidator;
@@ -56,6 +56,7 @@ public class GeneralUserForm extends Form<User> {
 	private static final long serialVersionUID = 1L;
 	private final RequiredTextField<String> email = new RequiredTextField<>("address.email");
 	private final List<GroupUser> grpUsers = new ArrayList<>();
+	private final AjaxOmDatePicker bday = new AjaxOmDatePicker("age");
 	private final boolean isAdminForm;
 	@SpringBean
 	private GroupDao groupDao;
@@ -66,6 +67,7 @@ public class GeneralUserForm extends Form<User> {
 		super(id, model);
 		this.isAdminForm = isAdminForm;
 		updateModelObject(getModelObject(), isAdminForm);
+		setOutputMarkupId(true);
 	}
 
 	@Override
@@ -95,8 +97,6 @@ public class GeneralUserForm extends Form<User> {
 		add(new DropDownChoice<>("timeZoneId", AVAILABLE_TIMEZONES));
 		add(new LanguageDropDown("languageId"));
 		add(new TextField<String>("address.phone"));
-		final AjaxOmDatePicker bday = new AjaxOmDatePicker("age");
-		bday.getConfig().withMaxDate(LocalDate.now());
 		add(bday);
 		add(new TextField<String>("address.street"));
 		add(new TextField<String>("address.additionalname"));
@@ -128,8 +128,8 @@ public class GeneralUserForm extends Form<User> {
 			}
 
 			@Override
-			public GroupUser fromId(String _id) {
-				Long id = Long.parseLong(_id);
+			public GroupUser fromId(String inId) {
+				Long id = Long.parseLong(inId);
 				User u = GeneralUserForm.this.getModelObject();
 				Group g = groupDao.get(id);
 				GroupUser gu = new GroupUser(g, u);
@@ -140,6 +140,9 @@ public class GeneralUserForm extends Form<User> {
 	}
 
 	public void updateModelObject(User u, boolean isAdminForm) {
+		/*bday.getConfig()
+			.withDate(u.getAge() == null ? LocalDate.now() : u.getAge())
+			.withMaxDate(LocalDate.now());*/
 		grpUsers.clear();
 		grpUsers.addAll(u.getGroupUsers());
 		if (isAdminForm) {
@@ -159,7 +162,7 @@ public class GeneralUserForm extends Form<User> {
 	@Override
 	protected void onValidate() {
 		User u = getModelObject();
-		if(!userDao.checkEmail(email.getConvertedInput(), u.getType(), u.getDomainId(), u.getId())) {
+		if (!userDao.checkEmail(email.getConvertedInput(), u.getType(), u.getDomainId(), u.getId())) {
 			error(getString("error.email.inuse"));
 		}
 		super.onValidate();

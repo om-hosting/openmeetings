@@ -18,6 +18,7 @@
  */
 package org.apache.openmeetings.backup;
 
+import static java.util.Map.entry;
 import static java.util.UUID.randomUUID;
 import static org.apache.openmeetings.db.bind.Constants.APPOINTMENT_LIST_NODE;
 import static org.apache.openmeetings.db.bind.Constants.APPOINTMENT_NODE;
@@ -29,6 +30,8 @@ import static org.apache.openmeetings.db.bind.Constants.CHAT_LIST_NODE;
 import static org.apache.openmeetings.db.bind.Constants.CHAT_NODE;
 import static org.apache.openmeetings.db.bind.Constants.CONTACT_LIST_NODE;
 import static org.apache.openmeetings.db.bind.Constants.CONTACT_NODE;
+import static org.apache.openmeetings.db.bind.Constants.EXTRA_MENU_LIST_NODE;
+import static org.apache.openmeetings.db.bind.Constants.EXTRA_MENU_NODE;
 import static org.apache.openmeetings.db.bind.Constants.FILE_LIST_NODE;
 import static org.apache.openmeetings.db.bind.Constants.FILE_NODE;
 import static org.apache.openmeetings.db.bind.Constants.GROUP_LIST_NODE;
@@ -88,6 +91,7 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_APPOINTM
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CALENDAR_ROOM_CAPACITY;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CAM_FPS;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CRYPT;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_CSP_FRAME;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_DASHBOARD_RSS_FEED1;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_DASHBOARD_RSS_FEED2;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_DASHBOARD_SHOW_CHAT;
@@ -116,6 +120,7 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PATH_FFM
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PATH_IMAGEMAGIC;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PATH_OFFICE;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_PATH_SOX;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_RECORDING_ENABLED;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REGISTER_FRONTEND;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REGISTER_OAUTH;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REGISTER_SOAP;
@@ -148,10 +153,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -162,6 +170,7 @@ import java.util.zip.ZipInputStream;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.transform.stream.StreamSource;
 
@@ -184,6 +193,7 @@ import org.apache.openmeetings.db.dao.calendar.OmCalendarDao;
 import org.apache.openmeetings.db.dao.file.BaseFileItemDao;
 import org.apache.openmeetings.db.dao.file.FileItemDao;
 import org.apache.openmeetings.db.dao.record.RecordingDao;
+import org.apache.openmeetings.db.dao.room.ExtraMenuDao;
 import org.apache.openmeetings.db.dao.room.PollDao;
 import org.apache.openmeetings.db.dao.room.RoomDao;
 import org.apache.openmeetings.db.dao.server.LdapConfigDao;
@@ -203,6 +213,7 @@ import org.apache.openmeetings.db.entity.file.BaseFileItem;
 import org.apache.openmeetings.db.entity.file.FileItem;
 import org.apache.openmeetings.db.entity.record.Recording;
 import org.apache.openmeetings.db.entity.record.RecordingChunk;
+import org.apache.openmeetings.db.entity.room.ExtraMenu;
 import org.apache.openmeetings.db.entity.room.Room;
 import org.apache.openmeetings.db.entity.room.RoomFile;
 import org.apache.openmeetings.db.entity.room.RoomGroup;
@@ -232,78 +243,80 @@ import org.springframework.stereotype.Component;
 @Component
 public class BackupImport {
 	private static final Logger log = LoggerFactory.getLogger(BackupImport.class);
-	private static final Map<String, String> outdatedConfigKeys = new HashMap<>();
-	private static final Map<String, Configuration.Type> configTypes = new HashMap<>();
+	private static final Map<String, String> outdatedConfigKeys = Map.ofEntries(
+			entry("crypt_ClassName", CONFIG_CRYPT)
+			, entry("system_email_addr", CONFIG_SMTP_SYSTEM_EMAIL)
+			, entry("smtp_server", CONFIG_SMTP_SERVER)
+			, entry("smtp_port", CONFIG_SMTP_PORT)
+			, entry("email_username", CONFIG_SMTP_USER)
+			, entry("email_userpass", CONFIG_SMTP_PASS)
+			, entry("default_lang_id", CONFIG_DEFAULT_LANG)
+			, entry("allow_frontend_register", CONFIG_REGISTER_FRONTEND)
+			, entry("max_upload_size", CONFIG_MAX_UPLOAD_SIZE)
+			, entry("rss_feed1", CONFIG_DASHBOARD_RSS_FEED1)
+			, entry("rss_feed2", CONFIG_DASHBOARD_RSS_FEED2)
+			, entry("oauth2.ignore_bad_ssl", CONFIG_IGNORE_BAD_SSL)
+			, entry("default.quality.screensharing", CONFIG_SCREENSHARING_QUALITY)
+			, entry("default.fps.screensharing", CONFIG_SCREENSHARING_FPS)
+			, entry("ldap_default_id", CONFIG_DEFAULT_LDAP_ID)
+			, entry("default_group_id", CONFIG_DEFAULT_GROUP_ID)
+			, entry("imagemagick_path", CONFIG_PATH_IMAGEMAGIC)
+			, entry("sox_path", CONFIG_PATH_SOX)
+			, entry("ffmpeg_path", CONFIG_PATH_FFMPEG)
+			, entry("office.path", CONFIG_PATH_OFFICE)
+			, entry("red5sip.enable", CONFIG_SIP_ENABLED)
+			, entry("red5sip.room_prefix", CONFIG_SIP_ROOM_PREFIX)
+			, entry("red5sip.exten_context", CONFIG_SIP_EXTEN_CONTEXT)
+			, entry("sendEmailAtRegister", CONFIG_EMAIL_AT_REGISTER)
+			, entry("sendEmailWithVerficationCode", CONFIG_EMAIL_VERIFICATION)
+			, entry("swftools_zoom", CONFIG_DOCUMENT_DPI)
+			, entry("swftools_jpegquality", CONFIG_DOCUMENT_QUALITY)
+			, entry("sms.subject", CONFIG_REMINDER_MESSAGE)
+			, entry("exclusive.audio.keycode", CONFIG_KEYCODE_MUTE_OTHERS)
+			, entry("header.csp.frame.options", CONFIG_CSP_FRAME)
+			);
+	private static final Map<String, Configuration.Type> configTypes = Map.ofEntries(
+			entry(CONFIG_REGISTER_FRONTEND, Configuration.Type.BOOL)
+			, entry(CONFIG_REGISTER_SOAP, Configuration.Type.BOOL)
+			, entry(CONFIG_REGISTER_OAUTH, Configuration.Type.BOOL)
+			, entry(CONFIG_SMTP_TLS, Configuration.Type.BOOL)
+			, entry(CONFIG_EMAIL_AT_REGISTER, Configuration.Type.BOOL)
+			, entry(CONFIG_EMAIL_VERIFICATION, Configuration.Type.BOOL)
+			, entry(CONFIG_SIP_ENABLED, Configuration.Type.BOOL)
+			, entry(CONFIG_SCREENSHARING_FPS_SHOW, Configuration.Type.BOOL)
+			, entry(CONFIG_SCREENSHARING_ALLOW_REMOTE, Configuration.Type.BOOL)
+			, entry(CONFIG_DASHBOARD_SHOW_MYROOMS, Configuration.Type.BOOL)
+			, entry(CONFIG_DASHBOARD_SHOW_CHAT, Configuration.Type.BOOL)
+			, entry(CONFIG_DASHBOARD_SHOW_RSS, Configuration.Type.BOOL)
+			, entry(CONFIG_REPLY_TO_ORGANIZER, Configuration.Type.BOOL)
+			, entry(CONFIG_IGNORE_BAD_SSL, Configuration.Type.BOOL)
+			, entry(CONFIG_MYROOMS_ENABLED, Configuration.Type.BOOL)
+			, entry(CONFIG_DEFAULT_GROUP_ID, Configuration.Type.NUMBER)
+			, entry(CONFIG_SMTP_PORT, Configuration.Type.NUMBER)
+			, entry(CONFIG_SMTP_TIMEOUT_CON, Configuration.Type.NUMBER)
+			, entry(CONFIG_SMTP_TIMEOUT, Configuration.Type.NUMBER)
+			, entry(CONFIG_DEFAULT_LANG, Configuration.Type.NUMBER)
+			, entry(CONFIG_DOCUMENT_DPI, Configuration.Type.NUMBER)
+			, entry(CONFIG_DOCUMENT_QUALITY, Configuration.Type.NUMBER)
+			, entry(CONFIG_SCREENSHARING_QUALITY, Configuration.Type.NUMBER)
+			, entry(CONFIG_SCREENSHARING_FPS, Configuration.Type.NUMBER)
+			, entry(CONFIG_MAX_UPLOAD_SIZE, Configuration.Type.NUMBER)
+			, entry(CONFIG_APPOINTMENT_REMINDER_MINUTES, Configuration.Type.NUMBER)
+			, entry(CONFIG_LOGIN_MIN_LENGTH, Configuration.Type.NUMBER)
+			, entry(CONFIG_PASS_MIN_LENGTH, Configuration.Type.NUMBER)
+			, entry(CONFIG_CALENDAR_ROOM_CAPACITY, Configuration.Type.NUMBER)
+			, entry(CONFIG_KEYCODE_ARRANGE, Configuration.Type.HOTKEY)
+			, entry(CONFIG_KEYCODE_MUTE_OTHERS, Configuration.Type.HOTKEY)
+			, entry(CONFIG_KEYCODE_MUTE, Configuration.Type.HOTKEY)
+			, entry(CONFIG_DEFAULT_LDAP_ID, Configuration.Type.NUMBER)
+			, entry(CONFIG_CAM_FPS, Configuration.Type.NUMBER)
+			, entry(CONFIG_MIC_RATE, Configuration.Type.NUMBER)
+			, entry(CONFIG_MIC_ECHO, Configuration.Type.BOOL)
+			, entry(CONFIG_MIC_NOISE, Configuration.Type.BOOL)
+			, entry(CONFIG_EXT_PROCESS_TTL, Configuration.Type.NUMBER)
+			, entry(CONFIG_RECORDING_ENABLED, Configuration.Type.BOOL)
+			);
 	private static final Pattern UUID_PATTERN = Pattern.compile("^[\\da-f]{8}(?:-[\\da-f]{4}){3}-[\\da-f]{12}$");
-	static {
-		outdatedConfigKeys.put("crypt_ClassName", CONFIG_CRYPT);
-		outdatedConfigKeys.put("system_email_addr", CONFIG_SMTP_SYSTEM_EMAIL);
-		outdatedConfigKeys.put("smtp_server", CONFIG_SMTP_SERVER);
-		outdatedConfigKeys.put("smtp_port", CONFIG_SMTP_PORT);
-		outdatedConfigKeys.put("email_username", CONFIG_SMTP_USER);
-		outdatedConfigKeys.put("email_userpass", CONFIG_SMTP_PASS);
-		outdatedConfigKeys.put("default_lang_id", CONFIG_DEFAULT_LANG);
-		outdatedConfigKeys.put("allow_frontend_register", CONFIG_REGISTER_FRONTEND);
-		outdatedConfigKeys.put("max_upload_size", CONFIG_MAX_UPLOAD_SIZE);
-		outdatedConfigKeys.put("rss_feed1", CONFIG_DASHBOARD_RSS_FEED1);
-		outdatedConfigKeys.put("rss_feed2", CONFIG_DASHBOARD_RSS_FEED2);
-		outdatedConfigKeys.put("oauth2.ignore_bad_ssl", CONFIG_IGNORE_BAD_SSL);
-		outdatedConfigKeys.put("default.quality.screensharing", CONFIG_SCREENSHARING_QUALITY);
-		outdatedConfigKeys.put("default.fps.screensharing", CONFIG_SCREENSHARING_FPS);
-		outdatedConfigKeys.put("ldap_default_id", CONFIG_DEFAULT_LDAP_ID);
-		outdatedConfigKeys.put("default_group_id", CONFIG_DEFAULT_GROUP_ID);
-		outdatedConfigKeys.put("imagemagick_path", CONFIG_PATH_IMAGEMAGIC);
-		outdatedConfigKeys.put("sox_path", CONFIG_PATH_SOX);
-		outdatedConfigKeys.put("ffmpeg_path", CONFIG_PATH_FFMPEG);
-		outdatedConfigKeys.put("office.path", CONFIG_PATH_OFFICE);
-		outdatedConfigKeys.put("red5sip.enable", CONFIG_SIP_ENABLED);
-		outdatedConfigKeys.put("red5sip.room_prefix", CONFIG_SIP_ROOM_PREFIX);
-		outdatedConfigKeys.put("red5sip.exten_context", CONFIG_SIP_EXTEN_CONTEXT);
-		outdatedConfigKeys.put("sendEmailAtRegister", CONFIG_EMAIL_AT_REGISTER);
-		outdatedConfigKeys.put("sendEmailWithVerficationCode", CONFIG_EMAIL_VERIFICATION);
-		outdatedConfigKeys.put("swftools_zoom", CONFIG_DOCUMENT_DPI);
-		outdatedConfigKeys.put("swftools_jpegquality", CONFIG_DOCUMENT_QUALITY);
-		outdatedConfigKeys.put("sms.subject", CONFIG_REMINDER_MESSAGE);
-		outdatedConfigKeys.put("exclusive.audio.keycode", CONFIG_KEYCODE_MUTE_OTHERS);
-		configTypes.put(CONFIG_REGISTER_FRONTEND, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_REGISTER_SOAP, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_REGISTER_OAUTH, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_SMTP_TLS, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_EMAIL_AT_REGISTER, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_EMAIL_VERIFICATION, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_SIP_ENABLED, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_SCREENSHARING_FPS_SHOW, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_SCREENSHARING_ALLOW_REMOTE, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_DASHBOARD_SHOW_MYROOMS, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_DASHBOARD_SHOW_CHAT, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_DASHBOARD_SHOW_RSS, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_REPLY_TO_ORGANIZER, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_IGNORE_BAD_SSL, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_MYROOMS_ENABLED, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_DEFAULT_GROUP_ID, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_SMTP_PORT, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_SMTP_TIMEOUT_CON, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_SMTP_TIMEOUT, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_DEFAULT_LANG, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_DOCUMENT_DPI, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_DOCUMENT_QUALITY, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_SCREENSHARING_QUALITY, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_SCREENSHARING_FPS, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_MAX_UPLOAD_SIZE, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_APPOINTMENT_REMINDER_MINUTES, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_LOGIN_MIN_LENGTH, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_PASS_MIN_LENGTH, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_CALENDAR_ROOM_CAPACITY, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_KEYCODE_ARRANGE, Configuration.Type.HOTKEY);
-		configTypes.put(CONFIG_KEYCODE_MUTE_OTHERS, Configuration.Type.HOTKEY);
-		configTypes.put(CONFIG_KEYCODE_MUTE, Configuration.Type.HOTKEY);
-		configTypes.put(CONFIG_DEFAULT_LDAP_ID, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_CAM_FPS, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_MIC_RATE, Configuration.Type.NUMBER);
-		configTypes.put(CONFIG_MIC_ECHO, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_MIC_NOISE, Configuration.Type.BOOL);
-		configTypes.put(CONFIG_EXT_PROCESS_TTL, Configuration.Type.NUMBER);
-	}
 
 	@Autowired
 	private AppointmentDao appointmentDao;
@@ -338,8 +351,12 @@ public class BackupImport {
 	@Autowired
 	private GroupDao groupDao;
 	@Autowired
+	private ExtraMenuDao menuDao;
+	@Autowired
 	private DocumentConverter docConverter;
 
+	private final Map<Long, Long> ldapMap = new HashMap<>();
+	private final Map<Long, Long> oauthMap = new HashMap<>();
 	private final Map<Long, Long> userMap = new HashMap<>();
 	private final Map<Long, Long> groupMap = new HashMap<>();
 	private final Map<Long, Long> calendarMap = new HashMap<>();
@@ -390,15 +407,7 @@ public class BackupImport {
 
 	public void performImport(InputStream is, ProgressHolder progressHolder) throws Exception {
 		progressHolder.setProgress(0);
-		userMap.clear();
-		groupMap.clear();
-		calendarMap.clear();
-		appointmentMap.clear();
-		roomMap.clear();
-		messageFolderMap.clear();
-		userContactMap.clear();
-		fileMap.clear();
-		hashMap.clear();
+		cleanup();
 		messageFolderMap.put(INBOX_FOLDER_ID, INBOX_FOLDER_ID);
 		messageFolderMap.put(SENT_FOLDER_ID, SENT_FOLDER_ID);
 		messageFolderMap.put(TRASH_FOLDER_ID, TRASH_FOLDER_ID);
@@ -443,8 +452,10 @@ public class BackupImport {
 		progressHolder.setProgress(87);
 		importRoomFiles(f);
 		progressHolder.setProgress(92);
+		importExtraMenus(f);
+		progressHolder.setProgress(95);
 
-		log.info("Room files import complete, starting copy of files and folders");
+		log.info("Extra menus import complete, starting copy of files and folders");
 		/*
 		 * ##################### Import real files and folders
 		 */
@@ -452,17 +463,17 @@ public class BackupImport {
 		progressHolder.setProgress(97);
 
 		if (ver.compareTo(BackupVersion.get("4.0.0")) < 0) {
-			for (BaseFileItem bfi : files) {
+			for (FileItem bfi : files) {
 				if (bfi.isDeleted()) {
 					continue;
 				}
 				if (BaseFileItem.Type.PRESENTATION == bfi.getType()) {
-					convertOldPresentation((FileItem)bfi);
+					convertOldPresentation(bfi);
 					fileItemDao.updateBase(bfi);
 				}
 				if (BaseFileItem.Type.WML_FILE == bfi.getType()) {
 					try {
-						Whiteboard wb = WbConverter.convert((FileItem)bfi);
+						Whiteboard wb = WbConverter.convert(bfi);
 						wb.save(bfi.getFile().toPath());
 					} catch (Exception e) {
 						log.error("Unexpected error while converting WB", e);
@@ -473,12 +484,30 @@ public class BackupImport {
 		log.info("File explorer item import complete, clearing temp files");
 
 		FileUtils.deleteDirectory(f);
+		cleanup();
 		progressHolder.setProgress(100);
+	}
+
+	void cleanup() {
+		ldapMap.clear();
+		oauthMap.clear();
+		userMap.clear();
+		groupMap.clear();
+		calendarMap.clear();
+		appointmentMap.clear();
+		roomMap.clear();
+		messageFolderMap.clear();
+		userContactMap.clear();
+		fileMap.clear();
+		hashMap.clear();
+		messageFolderMap.put(INBOX_FOLDER_ID, INBOX_FOLDER_ID);
+		messageFolderMap.put(SENT_FOLDER_ID, SENT_FOLDER_ID);
+		messageFolderMap.put(TRASH_FOLDER_ID, TRASH_FOLDER_ID);
 	}
 
 	static BackupVersion getVersion(File base) {
 		List<BackupVersion> list = new ArrayList<>(1);
-		readList(base, "version.xml", VERSION_LIST_NODE, VERSION_NODE, BackupVersion.class, v -> list.add(v), true);
+		readList(base, "version.xml", VERSION_LIST_NODE, VERSION_NODE, BackupVersion.class, list::add, true);
 		return list.isEmpty() ? new BackupVersion() : list.get(0);
 	}
 
@@ -568,10 +597,14 @@ public class BackupImport {
 			if (Strings.isEmpty(c.getName()) || "local DB [internal]".equals(c.getName())) {
 				return;
 			}
+			Long oldId = c.getId();
 			c.setId(null);
 			c = ldapConfigDao.update(c, null);
 			if (defaultLdapId[0] == null) {
 				defaultLdapId[0] = c.getId();
+			}
+			if (oldId != null) {
+				ldapMap.put(oldId, c.getId());
 			}
 		});
 		return defaultLdapId[0];
@@ -584,8 +617,12 @@ public class BackupImport {
 		log.info("Ldap config import complete, starting OAuth2 server import");
 		readList(base, "oauth2servers.xml", OAUTH_LIST_NODE, OAUTH_NODE, OAuthServer.class
 				, s -> {
+					Long oldId = s.getId();
 					s.setId(null);
-					auth2Dao.update(s, null);
+					s = auth2Dao.update(s, null);
+					if (oldId != null) {
+						oauthMap.put(oldId, s.getId());
+					}
 				}, false);
 	}
 
@@ -597,14 +634,13 @@ public class BackupImport {
 		String jNameTimeZone = getDefaultTimezone();
 		//add existent emails from database
 		List<User>  users = userDao.getAllUsers();
-		final Map<String, Integer> userEmailMap = new HashMap<>();
-		final Map<String, Integer> userLoginMap = new HashMap<>();
+		final Set<String> userEmails = new HashSet<>();
+		final Set<UserKey> userLogins = new HashSet<>();
 		for (User u : users){
-			if (u.getAddress() == null || u.getAddress().getEmail() == null || User.Type.USER != u.getType()) {
-				continue;
+			if (u.getAddress() != null && !Strings.isEmpty(u.getAddress().getEmail())) {
+				userEmails.add(u.getAddress().getEmail());
 			}
-			userEmailMap.put(u.getAddress().getEmail(), Integer.valueOf(-1));
-			userLoginMap.put(u.getLogin(), Integer.valueOf(-1));
+			userLogins.add(new UserKey(u));
 		}
 		Class<User> eClazz = User.class;
 		JAXBContext jc = JAXBContext.newInstance(eClazz);
@@ -618,19 +654,33 @@ public class BackupImport {
 			}
 			// check that email is unique
 			if (u.getAddress() != null && u.getAddress().getEmail() != null && User.Type.USER == u.getType()) {
-				if (userEmailMap.containsKey(u.getAddress().getEmail())) {
+				if (userEmails.contains(u.getAddress().getEmail())) {
 					log.warn("Email is duplicated for user {}", u);
 					String updateEmail = String.format("modified_by_import_<%s>%s", randomUUID(), u.getAddress().getEmail());
 					u.getAddress().setEmail(updateEmail);
 				}
-				userEmailMap.put(u.getAddress().getEmail(), Integer.valueOf(userEmailMap.size()));
+				userEmails.add(u.getAddress().getEmail());
 			}
-			if (userLoginMap.containsKey(u.getLogin())) {
+			if (u.getType() == User.Type.LDAP) {
+				if (u.getDomainId() != null && ldapMap.containsKey(u.getDomainId())) {
+					u.setDomainId(ldapMap.get(u.getDomainId()));
+				} else {
+					log.error("Unable to find Domain for ID: {}", u.getDomainId());
+				}
+			}
+			if (u.getType() == User.Type.OAUTH) {
+				if (u.getDomainId() != null && oauthMap.containsKey(u.getDomainId())) {
+					u.setDomainId(oauthMap.get(u.getDomainId()));
+				} else {
+					log.error("Unable to find Domain for ID: {}", u.getDomainId());
+				}
+			}
+			if (userLogins.contains(new UserKey(u))) {
 				log.warn("LOGIN is duplicated for USER {}", u);
 				String updateLogin = String.format("modified_by_import_<%s>%s", randomUUID(), u.getLogin());
 				u.setLogin(updateLogin);
 			}
-			userLoginMap.put(u.getLogin(), Integer.valueOf(userLoginMap.size()));
+			userLogins.add(new UserKey(u));
 			if (u.getGroupUsers() != null) {
 				for (Iterator<GroupUser> iter = u.getGroupUsers().iterator(); iter.hasNext();) {
 					GroupUser gu = iter.next();
@@ -648,9 +698,6 @@ public class BackupImport {
 			String tz = u.getTimeZoneId();
 			if (tz == null) {
 				u.setTimeZoneId(jNameTimeZone);
-				u.setForceTimeZoneCheck(true);
-			} else {
-				u.setForceTimeZoneCheck(false);
 			}
 
 			Long userId = u.getId();
@@ -660,6 +707,10 @@ public class BackupImport {
 			}
 			if (AuthLevelUtil.hasLoginLevel(u.getRights()) && !Strings.isEmpty(u.getActivatehash())) {
 				u.setActivatehash(null);
+			}
+			if (u.getExternalType() != null) {
+				Group g = groupDao.getExternal(u.getExternalType());
+				u.addGroup(g);
 			}
 			userDao.update(u, Long.valueOf(-1));
 			userMap.put(userId, u.getId());
@@ -679,6 +730,13 @@ public class BackupImport {
 		readList(unmarshaller, base, "rooms.xml", ROOM_LIST_NODE, ROOM_NODE, eClazz, r -> {
 			Long roomId = r.getId();
 
+			if (r.getOwnerId() != null) {
+				Long newOwnerId = userMap.get(r.getOwnerId());
+				if (newOwnerId == null) {
+					return; // owner was deleted
+				}
+				r.setOwnerId(newOwnerId);
+			}
 			// We need to reset ids as openJPA reject to store them otherwise
 			r.setId(null);
 			if (r.getModerators() != null) {
@@ -706,6 +764,9 @@ public class BackupImport {
 		unmarshaller.setAdapter(new GroupAdapter(groupDao, groupMap));
 
 		readList(unmarshaller, base, "rooms_organisation.xml", ROOM_GRP_LIST_NODE, ROOM_GRP_NODE, eClazz, rg -> {
+			if (rg.getRoom() == null || rg.getGroup() == null) {
+				return;
+			}
 			Room r = roomDao.get(rg.getRoom().getId());
 			if (r == null || rg.getGroup().getId() == null) {
 				return;
@@ -842,6 +903,17 @@ public class BackupImport {
 			}
 			file.setOwnerId(newOwnerId);
 		}
+		if (file.getInsertedBy() != null) {
+			Long newInsertedBy = userMap.get(file.getInsertedBy());
+			file.setInsertedBy(newInsertedBy);
+		}
+		if (file.getGroupId() != null) {
+			Long newGroupId = groupMap.get(file.getGroupId());
+			if (newGroupId == null) {
+				return true; // owner was deleted
+			}
+			file.setGroupId(newGroupId);
+		}
 		return false;
 	}
 
@@ -856,9 +928,7 @@ public class BackupImport {
 			)
 	{
 		TreeMap<Long, T> items = new TreeMap<>();
-		readList(baseDir, fileName, listNodeName, nodeName, clazz, f -> {
-			items.put(f.getId(), f);
-		}, false);
+		readList(baseDir, fileName, listNodeName, nodeName, clazz, f -> items.put(f.getId(), f), false);
 		FileTree<T> tree = new FileTree<>();
 		TreeMap<Long, T> remain = new TreeMap<>();
 		int counter = items.size(); //max iterations
@@ -1071,6 +1141,22 @@ public class BackupImport {
 		}, true);
 	}
 
+	void importExtraMenus(File base) throws Exception {
+		log.info("Room files complete, starting extra menus import");
+		Class<ExtraMenu> eClazz = ExtraMenu.class;
+		JAXBContext jc = JAXBContext.newInstance(eClazz);
+		Unmarshaller unmarshaller = jc.createUnmarshaller();
+		unmarshaller.setAdapter(new GroupAdapter(groupDao, groupMap));
+
+		readList(unmarshaller, base, "extraMenus.xml", EXTRA_MENU_LIST_NODE, EXTRA_MENU_NODE, eClazz, m -> {
+			if (Strings.isEmpty(m.getName()) || Strings.isEmpty(m.getLink())) {
+				return;
+			}
+			m.setId(null);
+			menuDao.update(m, null);
+		}, true);
+	}
+
 	private static <T> void readList(File baseDir, String fileName, String listNodeName, String nodeName, Class<T> clazz, Consumer<T> consumer) {
 		readList(baseDir, fileName, listNodeName, nodeName, clazz, consumer, false);
 	}
@@ -1104,7 +1190,7 @@ public class BackupImport {
 			StreamSource xmlSource = new StreamSource(xml);
 			XMLStreamReader xsr = xif.createXMLStreamReader(xmlSource);
 			boolean listNodeFound = false;
-			while (xsr.getEventType() != XMLStreamReader.END_DOCUMENT) {
+			while (xsr.getEventType() != XMLStreamConstants.END_DOCUMENT) {
 				if (xsr.isStartElement()) {
 					if (!listNodeFound && listNodeName.equals(xsr.getLocalName())) {
 						listNodeFound = true;
@@ -1271,6 +1357,38 @@ public class BackupImport {
 			} catch (Exception e) {
 				log.error("Unexpected exception while converting OLD format presentations", e);
 			}
+		}
+	}
+
+	private static class UserKey {
+		private final String login;
+		private final User.Type type;
+		private final Long domainId;
+
+		UserKey(User u) {
+			this.login = u.getLogin();
+			this.type = u.getType();
+			this.domainId = u.getDomainId();
+		}
+
+		@Override
+		public int hashCode() {
+			return Objects.hash(domainId, login, type);
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj) {
+				return true;
+			}
+			if (obj == null) {
+				return false;
+			}
+			if (getClass() != obj.getClass()) {
+				return false;
+			}
+			UserKey other = (UserKey) obj;
+			return Objects.equals(domainId, other.domainId) && Objects.equals(login, other.login) && type == other.type;
 		}
 	}
 }

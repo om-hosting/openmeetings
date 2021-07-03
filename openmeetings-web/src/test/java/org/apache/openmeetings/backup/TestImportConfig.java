@@ -18,6 +18,7 @@
  */
 package org.apache.openmeetings.backup;
 
+import static org.apache.openmeetings.backup.TestImport.BACKUP_ROOT;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REGISTER_FRONTEND;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REGISTER_OAUTH;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REGISTER_SOAP;
@@ -29,18 +30,18 @@ import java.io.File;
 import org.apache.openmeetings.db.entity.basic.Configuration;
 import org.junit.jupiter.api.Test;
 
-public class TestImportConfig extends AbstractTestImport {
+class TestImportConfig extends AbstractTestImport {
 
 	@Test
-	public void importConfigsNoKeyDeleted() throws Exception {
+	void importConfigsNoKeyDeleted() throws Exception {
 		long configsCount = cfgDao.count();
-		File configs = new File(getClass().getClassLoader().getResource("org/apache/openmeetings/backup/config/skip/configs.xml").toURI());
+		File configs = new File(getClass().getClassLoader().getResource(BACKUP_ROOT + "config/skip/configs.xml").toURI());
 		backupImport.importConfigs(configs.getParentFile());
 		assertEquals(configsCount, cfgDao.count(), "No records should be added");
 	}
 
 	@Test
-	public void importConfigsBool() throws Exception {
+	void importConfigsBool() throws Exception {
 		cfgDao.get(CONFIG_REGISTER_FRONTEND, CONFIG_REGISTER_SOAP, CONFIG_REGISTER_OAUTH, CONFIG_REPLY_TO_ORGANIZER).forEach(cfg -> {
 			cfg.setValueB(cfg.getKey().equals(CONFIG_REPLY_TO_ORGANIZER));
 			cfgDao.update(cfg, null);
@@ -52,7 +53,7 @@ public class TestImportConfig extends AbstractTestImport {
 			cfgNE2.setType(Configuration.Type.BOOL);
 		}
 		cfgDao.update(cfgNE2, null, true);
-		File configs = new File(getClass().getClassLoader().getResource("org/apache/openmeetings/backup/config/bool/configs.xml").toURI());
+		File configs = new File(getClass().getClassLoader().getResource(BACKUP_ROOT + "config/bool/configs.xml").toURI());
 		backupImport.importConfigs(configs.getParentFile());
 		cfgDao.get(CONFIG_REGISTER_FRONTEND, CONFIG_REGISTER_SOAP, CONFIG_REGISTER_OAUTH, CONFIG_REPLY_TO_ORGANIZER).forEach(cfg -> {
 			boolean exp = !cfg.getKey().equals(CONFIG_REPLY_TO_ORGANIZER);
@@ -61,8 +62,8 @@ public class TestImportConfig extends AbstractTestImport {
 	}
 
 	@Test
-	public void importConfigs() throws Exception {
-		File configs = new File(getClass().getClassLoader().getResource("org/apache/openmeetings/backup/config/configs.xml").toURI());
+	void importConfigs() throws Exception {
+		File configs = new File(getClass().getClassLoader().getResource(BACKUP_ROOT + "config/configs.xml").toURI());
 		backupImport.importConfigs(configs.getParentFile());
 	}
 }

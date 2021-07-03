@@ -19,6 +19,7 @@
 package org.apache.openmeetings.web.room.menu;
 
 import static org.apache.openmeetings.web.app.WebSession.getRights;
+import static org.apache.openmeetings.web.common.BasePanel.EVT_CHANGE;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -57,7 +58,7 @@ public class RoomInvitationForm extends InvitationForm {
 	private final Long roomId;
 	private final WebMarkupContainer groupContainer = new WebMarkupContainer("groupContainer");
 	final Select2MultiChoice<Group> groups = new Select2MultiChoice<>("groups"
-			, new CollectionModel<>(new ArrayList<Group>())
+			, new CollectionModel<>(new ArrayList<>())
 			, new GroupChoiceProvider());
 	final WebMarkupContainer sipContainer = new WebMarkupContainer("sip-container");
 	@SpringBean
@@ -87,15 +88,10 @@ public class RoomInvitationForm extends InvitationForm {
 			}
 		}));
 		groupContainer.add(
-			groups.setRequired(true).add(new AjaxFormComponentUpdatingBehavior("change") {
-				private static final long serialVersionUID = 1L;
-
-				@Override
-				protected void onUpdate(AjaxRequestTarget target) {
-					url.setModelObject(null);
-					updateButtons(target);
-				}
-			}).setOutputMarkupId(true)
+			groups.setRequired(true).add(AjaxFormComponentUpdatingBehavior.onUpdate(EVT_CHANGE, target -> {
+				url.setModelObject(null);
+				updateButtons(target);
+			})).setOutputMarkupId(true)
 			, new Radio<>("group", Model.of(InviteeType.group))
 		);
 		rdi.add(recipients, groupContainer.setVisible(showGroups));
@@ -131,7 +127,7 @@ public class RoomInvitationForm extends InvitationForm {
 		if (i.getRoom() != null) {
 			target.add(sipContainer.replace(new Label("room.confno", i.getRoom().getConfno())).setVisible(i.getRoom().isSipEnabled()));
 		}
-		groups.setModelObject(new ArrayList<Group>());
+		groups.setModelObject(new ArrayList<>());
 		groups.setEnabled(false);
 		rdi.setModelObject(InviteeType.user);
 	}

@@ -40,11 +40,11 @@ import org.apache.openmeetings.db.entity.room.Invitation.Valid;
 import org.apache.openmeetings.db.entity.room.Room;
 import org.junit.jupiter.api.Test;
 
-public class TestRoomService extends AbstractWebServiceTest {
+class TestRoomService extends AbstractWebServiceTest {
 	private static final long CAPACITY = 666L;
 
 	@Test
-	public void testExternal() {
+	void testExternal() {
 		ServiceResult sr = login();
 		String extId = randomUUID().toString();
 		Room.Type type = Room.Type.PRESENTATION;
@@ -60,17 +60,19 @@ public class TestRoomService extends AbstractWebServiceTest {
 				.query("room", r.toString())
 				.get(RoomDTO.class);
 		assertNotNull(room, "Valid room should be returned");
+		assertEquals(extId, room.getExternalId(), "External ID of room should match");
 		assertNotNull(room.getId(), "Room ID should be not empty");
 
 		RoomDTO room1 = getClient(getRoomUrl()).path(String.format("/%s/%s/%s", Room.Type.PRESENTATION, UNIT_TEST_EXT_TYPE, extId))
 				.query("sid", sr.getMessage())
 				.get(RoomDTO.class);
 		assertNotNull(room1, "Valid room should be returned");
+		assertEquals(extId, room1.getExternalId(), "External ID of room should match");
 		assertEquals(room.getId(), room1.getId(), "Same Room should be returned");
 	}
 
 	@Test
-	public void testCreate1() {
+	void testCreate1() {
 		String extId = randomUUID().toString();
 		Room.Type type = Room.Type.PRESENTATION;
 		String name = "Unit Test Ext Room1";
@@ -87,7 +89,7 @@ public class TestRoomService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCreate2() {
+	void testCreate2() {
 		Room.Type type = Room.Type.PRESENTATION;
 		String name = "Unit Test Ext Room2";
 		String comment = "Unit Test Ext Room Comments2";
@@ -101,7 +103,7 @@ public class TestRoomService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCreateWithFiles1() {
+	void testCreateWithFiles1() {
 		Room.Type type = Room.Type.PRESENTATION;
 		String name = "Unit Test Ext Room3";
 		String comment = "Unit Test Ext Room Comments3";
@@ -119,7 +121,7 @@ public class TestRoomService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testCreateWithFiles2() throws IOException {
+	void testCreateWithFiles2() throws IOException {
 		//lets create real file
 		CallResult<FileItemDTO> fileCall = createVerifiedFile(getDefaultProfilePicture(), "img.png", BaseFileItem.Type.IMAGE);
 
@@ -141,7 +143,7 @@ public class TestRoomService extends AbstractWebServiceTest {
 	}
 
 	@Test
-	public void testHash() {
+	void testHash() {
 		List<Room> rooms = getBean(RoomDao.class).get(0,  100);
 		assertFalse(rooms.isEmpty(), "Room list should not be empty");
 

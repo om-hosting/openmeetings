@@ -36,7 +36,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class TestUserGroup extends AbstractJUnitDefaults {
+class TestUserGroup extends AbstractJUnitDefaults {
 	public static final String GROUP_NAME = "Test Group";
 	@Autowired
 	private GroupUserDao groupUserDao;
@@ -52,7 +52,7 @@ public class TestUserGroup extends AbstractJUnitDefaults {
 	}
 
 	@Test
-	public void getUsersByGroupId() {
+	void getUsersByGroupId() {
 		User u = getValidUser();
 		Long groupId = u.getGroupUsers().get(0).getGroup().getId();
 		List<GroupUser> ul = groupUserDao.get(groupId, 0, 9999);
@@ -63,7 +63,7 @@ public class TestUserGroup extends AbstractJUnitDefaults {
 	}
 
 	@Test
-	public void addGroup() {
+	void addGroup() {
 		Group g = new Group();
 		g.setName(GROUP_NAME);
 		Long groupId = groupDao.update(g, null).getId(); //inserted by not checked
@@ -74,7 +74,7 @@ public class TestUserGroup extends AbstractJUnitDefaults {
 	}
 
 	@Test
-	public void addUserWithoutGroup() throws Exception {
+	void addUserWithoutGroup() throws Exception {
 		String uuid = randomUUID().toString();
 		User u = getUser(uuid);
 		u = userDao.update(u, null);
@@ -91,7 +91,7 @@ public class TestUserGroup extends AbstractJUnitDefaults {
 
 
 	@Test
-	public void addLdapUserWithoutGroup() throws Exception {
+	void addLdapUserWithoutGroup() throws Exception {
 		User u1 = getUser();
 		u1.setType(User.Type.LDAP);
 		u1.setDomainId(1L);
@@ -107,7 +107,7 @@ public class TestUserGroup extends AbstractJUnitDefaults {
 
 	@Test
 	@Tag("org.apache.openmeetings.test.HeavyTests")
-	public void add10kUsers() throws Exception {
+	void add10kUsers() throws Exception {
 		List<Group> groups = groupDao.get(GROUP_NAME, 0, 1, null);
 		Group g = null;
 		if (groups == null || groups.isEmpty()) {

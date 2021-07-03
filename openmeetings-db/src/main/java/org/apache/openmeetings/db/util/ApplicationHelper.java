@@ -25,8 +25,12 @@ import static org.springframework.web.context.WebApplicationContext.ROOT_WEB_APP
 import static org.springframework.web.context.support.WebApplicationContextUtils.getWebApplicationContext;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
+import javax.servlet.FilterConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 
@@ -40,6 +44,7 @@ import org.apache.wicket.ThreadContext;
 import org.apache.wicket.mock.MockWebResponse;
 import org.apache.wicket.protocol.http.WebApplication;
 import org.apache.wicket.protocol.http.WebSession;
+import org.apache.wicket.protocol.http.WicketFilter;
 import org.apache.wicket.protocol.http.mock.MockHttpServletRequest;
 import org.apache.wicket.protocol.http.mock.MockHttpSession;
 import org.apache.wicket.protocol.http.mock.MockServletContext;
@@ -64,7 +69,7 @@ public class ApplicationHelper {
 			try {
 				app = (WebApplication)getAppClass().getDeclaredConstructor().newInstance();
 				app.setName(String.format("--%s--", UUID.randomUUID())); //temporary name for temporary application
-				ServletContext sc = new MockServletContext(app, null);
+				final ServletContext sc = new MockServletContext(app, null);
 				XmlWebApplicationContext xmlContext = new XmlWebApplicationContext();
 				xmlContext.setConfigLocation("classpath:applicationContext.xml");
 				xmlContext.setServletContext(sc);
@@ -73,6 +78,41 @@ public class ApplicationHelper {
 				app = xmlContext.getBean(WebApplication.class);
 				app.setName(getWicketApplicationName());
 				app.setServletContext(sc);
+				if (app.getWicketFilter() == null) {
+					final FilterConfig filterConfig = new FilterConfig() {
+						private final Map<String, String> initParameters = new HashMap<>();
+						{
+							initParameters.put(WicketFilter.FILTER_MAPPING_PARAM, "/servlet/*");
+						}
+
+						@Override
+						public String getFilterName() {
+							return getClass().getName();
+						}
+
+						@Override
+						public ServletContext getServletContext() {
+							return sc;
+						}
+
+						@Override
+						public String getInitParameter(String s) {
+							return initParameters.get(s);
+						}
+
+						@Override
+						public Enumeration<String> getInitParameterNames() {
+							throw new UnsupportedOperationException("Not implemented");
+						}
+					};
+					WicketFilter filter = new WicketFilter() {
+						@Override
+						public FilterConfig getFilterConfig() {
+							return filterConfig;
+						}
+					};
+					app.setWicketFilter(filter);
+				}
 			} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | InvocationTargetException | NoSuchMethodException e) {
 				log.error("Failed to create Application");
 			}
@@ -116,13 +156,17 @@ public class ApplicationHelper {
 		}
 	}
 
-	public static IApplication ensureApplication(Long langId) {
-		IApplication a = ensureApplication();
+	public static void ensureRequestCycle(IApplication a) {
 		if (ThreadContext.getRequestCycle() == null) {
 			ServletWebRequest req = new ServletWebRequest(new MockHttpServletRequest((Application)a, new MockHttpSession(a.getServletContext()), a.getServletContext()), "");
 			RequestCycleContext rctx = new RequestCycleContext(req, new MockWebResponse(), a.getRootRequestMapper(), a.getExceptionMapperProvider().get());
 			ThreadContext.setRequestCycle(new RequestCycle(rctx));
 		}
+	}
+
+	public static IApplication ensureApplication(Long langId) {
+		IApplication a = ensureApplication();
+		ensureRequestCycle(a);
 		if (ThreadContext.getSession() == null) {
 			WebSession s = WebSession.get();
 			if (langId > 0) {

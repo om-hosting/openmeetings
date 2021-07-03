@@ -49,13 +49,17 @@ import de.agilecoders.wicket.core.markup.html.bootstrap.utilities.ColorBehavior;
 public class UsersPanel extends AdminBasePanel {
 	private static final long serialVersionUID = 1L;
 	final WebMarkupContainer listContainer = new WebMarkupContainer("listContainer");
+	private final PasswordDialog adminPass = new PasswordDialog("adminPass");
 	private UserForm form;
 	@SpringBean
 	private UserDao userDao;
 
 	public UsersPanel(String id) {
 		super(id);
+	}
 
+	@Override
+	protected void onInitialize() {
 		final SearchableDataView<User> dataView = new SearchableDataView<>("userList", new SearchableGroupAdminDataProvider<>(UserDao.class)) {
 			private static final long serialVersionUID = 1L;
 
@@ -67,16 +71,11 @@ public class UsersPanel extends AdminBasePanel {
 				item.add(new Label("login"));
 				item.add(new Label("firstname"));
 				item.add(new Label("lastname"));
-				item.add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						form.setModelObject(userDao.get(userId));
-						form.setNewVisible(false);
-						form.update(target);
-					}
-				});
+				item.add(AjaxEventBehavior.onEvent(EVT_CLICK, target -> {
+					form.setModelObject(userDao.get(userId));
+					form.setNewRecordVisible(false);
+					form.update(target);
+				}));
 				StringBuilder cl = getRowClass(u.getId(), form.getModelObject().getId());
 				if (u.isDeleted()) {
 					cl.append(" deleted");
@@ -99,19 +98,14 @@ public class UsersPanel extends AdminBasePanel {
 			.addLink(new OmOrderByBorder<>("orderByFirstName", "firstname", container))
 			.addLink(new OmOrderByBorder<>("orderByLastName", "lastname", container));
 		add(container.getLinks());
-		add(navigator);
-	}
-
-	@Override
-	protected void onInitialize() {
+		add(navigator, adminPass);
 		final Modal<String> warning = new IconTextModal("warning")
 				.withLabel(new ResourceModel("warn.nogroup"))
 				.withErrorIcon(ColorBehavior.Color.Warning)
 				.header(new ResourceModel("797"))
 				.addButton(OmModalCloseButton.of("54"));
 
-		form = new UserForm("form", listContainer, getNewUserInstance(userDao.get(getUserId())), warning);
-		form.setNewVisible(true);
+		form = new UserForm("form", listContainer, getNewUserInstance(userDao.get(getUserId())), adminPass, warning);
 		add(form, warning);
 		super.onInitialize();
 	}

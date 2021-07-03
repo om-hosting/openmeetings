@@ -28,30 +28,30 @@ import org.apache.openmeetings.db.entity.server.Sessiondata;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class TestAuth extends AbstractJUnitDefaults {
+class TestAuth extends AbstractJUnitDefaults {
 	@Autowired
 	private SessiondataDao sessionDao;
 
 	@Test
-	public void test() {
+	void test() {
 		Sessiondata sd = sessionDao.create(1L, 1L);
 		assertNotNull(sd);
 		sessionDao.clearSessionTable(-1L);
 	}
 
 	@Test
-	public void testNotExistent() {
+	void testNotExistent() {
 		Sessiondata sd = sessionDao.check(randomUUID().toString());
 		assertNotNull(sd);
 	}
 
 	@Test
-	public void testFind1() {
+	void testFind1() {
 		assertNull(sessionDao.find(null));
 	}
 
 	@Test
-	public void testFind2() {
+	void testFind2() {
 		assertNull(sessionDao.find(randomUUID().toString()));
 	}
 }

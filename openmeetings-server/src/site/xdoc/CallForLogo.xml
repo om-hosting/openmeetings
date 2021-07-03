@@ -37,40 +37,21 @@
 				Please send your logos and opinions to <a href="mailing-lists.html">user@ mail list</a> (you need to subscribe first)<br/>
 				Thanks in advance :)
 			</p>
+			<div id="before-preview"></div>
 		</section>
 		<section name="Preview">
 			<div class="powered-preview">
+				<div class='powered-preview-logo'></div>
 			</div>
 		</section>
 		<section name="Logos">
-			<script type="text/javascript">
-			//<![CDATA[
-				function applyLogoBig(e) {
-					var ib = e.closest('table').find('.logo-big');
-					var bi = $('.bannerLeft img');
-					bi.attr('src', ib.attr('src'));
-					$('.subhead')[0].scrollIntoView()
-				}
-				function applyLogoSmall(e) {
-					var pp = $('.powered-preview');
-					var l = pp.children('.powered-preview-logo');
-					if (!l.length) {
-						l = $("<div class='powered-preview-logo'></div>");
-						pp.append(l);
-					}
-					var ib = e.closest('table').find('.logo-square');
-					l.css('background-image', 'url(' + ib.attr('src') + ')');
-					$('#_toc_preview')[0].scrollIntoView();
-				}
-			//]]>
-			</script>
 			<h3>Big version</h3>
 			<ol>
 				<li>
 					<table>
 						<tr>
 							<td><img class="logo-big" src="images/logo.png" alt="Apache OpenMeetings"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoBig($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -82,7 +63,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-big" src="images/logos/logo_om_big3.png" alt="Apache OpenMeetings"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoBig($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -94,7 +75,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-big" src="images/logos/logo_om_big4.png" alt="Apache OpenMeetings"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoBig($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -106,7 +87,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-big" src="images/logos/logo_om_big5.png" alt="Apache OpenMeetings"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoBig($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -118,7 +99,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-big" src="images/logos/logo_om_big6.png" alt="Apache OpenMeetings"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoBig($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -130,7 +111,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-big" src="images/logos/logo_om_big7.png" alt="Apache OpenMeetings"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoBig($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -142,7 +123,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-big" src="images/logos/logo_om_big8.png" alt="Apache OpenMeetings"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoBig($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -154,11 +135,23 @@
 					<table>
 						<tr>
 							<td><img class="logo-big" src="images/logos/logo_om_big9.png" alt="Apache OpenMeetings"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoBig($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
 							<td>Lauro M. Atienza</td>
+						</tr>
+					</table>
+				</li>
+				<li>
+					<table>
+						<tr>
+							<td><img class="logo-big" src="images/logos/logo_om_big1.png" alt="Apache OpenMeetings"/></td>
+							<td><span class="btn btn-primary btn-logo-big">Apply</span></td>
+						</tr>
+						<tr>
+							<td>Author</td>
+							<td>Thomas Scholzen</td>
 						</tr>
 					</table>
 				</li>
@@ -169,7 +162,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om1.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -181,7 +174,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small3.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -193,7 +186,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small4.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -205,7 +198,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small6.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -217,7 +210,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small7.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -229,7 +222,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small8.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -241,7 +234,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small9.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -253,7 +246,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small10.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -265,7 +258,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small11.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -277,7 +270,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small12.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -289,7 +282,7 @@
 					<table>
 						<tr>
 							<td><img class="logo-square" src="images/logos/logo_om_small13.png" alt="Square version" width="50"/></td>
-							<td><span class="btn btn-primary" onclick="applyLogoSmall($(this));">Apply</span></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
 						</tr>
 						<tr>
 							<td>Author</td>
@@ -297,7 +290,39 @@
 						</tr>
 					</table>
 				</li>
+				<li>
+					<table>
+						<tr>
+							<td><img class="logo-square" src="images/logos/logo_om_small1.png" alt="Square version" width="50"/></td>
+							<td><span class="btn btn-primary btn-logo-small">Apply</span></td>
+						</tr>
+						<tr>
+							<td>Author</td>
+							<td>Thomas Scholzen</td>
+						</tr>
+					</table>
+				</li>
 			</ol>
+			<script type="text/javascript">
+			//<![CDATA[
+				function applyLogoBig() {
+					var ib = $(this).closest('table').find('.logo-big');
+					var bi = $('.bannerLeft img');
+					bi.attr('src', ib.attr('src'));
+					$(window).scrollTop(0);
+				}
+				function applyLogoSmall() {
+					var l = $('.powered-preview .powered-preview-logo');
+					var ib = $(this).closest('table').find('.logo-square');
+					l.css('background-image', 'url(' + ib.attr('src') + ')');
+					$('#before-preview')[0].scrollIntoView();
+				}
+				document.addEventListener("DOMContentLoaded", function() {
+					$('.btn-logo-big').click(applyLogoBig);
+					$('.btn-logo-small').click(applyLogoSmall);
+				});
+			//]]>
+			</script>
 		</section>
 	</body>
 </document>

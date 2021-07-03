@@ -20,6 +20,8 @@ package org.apache.openmeetings.service.calendar.caldav;
 
 import static java.util.UUID.randomUUID;
 import static org.apache.openmeetings.db.util.TimezoneUtil.getTimeZone;
+import static org.apache.openmeetings.util.mail.MailUtil.MAILTO;
+import static org.apache.openmeetings.util.mail.MailUtil.SCHEME_MAILTO;
 
 import java.net.URI;
 import java.text.ParsePosition;
@@ -228,7 +230,7 @@ public class IcalUtils {
 			URI uri = URI.create(organizer.getValue());
 
 			//If the value of the organizer is an email
-			if ("mailto".equals(uri.getScheme())) {
+			if (SCHEME_MAILTO.equals(uri.getScheme())) {
 				String email = uri.getSchemeSpecificPart();
 
 				organizerEmail = email;
@@ -248,7 +250,7 @@ public class IcalUtils {
 		if (attendees != null && !attendees.isEmpty()) {
 			for (Property attendee : attendees) {
 				URI uri = URI.create(attendee.getValue());
-				if ("mailto".equals(uri.getScheme())) {
+				if (SCHEME_MAILTO.equals(uri.getScheme())) {
 					String email = uri.getSchemeSpecificPart();
 
 					Role role = attendee.getParameter(Role.CHAIR.getName());
@@ -395,7 +397,7 @@ public class IcalUtils {
 		}
 
 		Calendar icsCalendar = new Calendar();
-		icsCalendar.getProperties().add(new ProdId("-//Events Calendar//Apache Openmeetings//EN"));
+		icsCalendar.getProperties().add(new ProdId(PROD_ID));
 		icsCalendar.getProperties().add(Version.VERSION_2_0);
 		icsCalendar.getProperties().add(CalScale.GREGORIAN);
 		icsCalendar.getComponents().add(timeZone.getVTimeZone());
@@ -403,7 +405,7 @@ public class IcalUtils {
 		DateTime start = new DateTime(appointment.getStart()), end = new DateTime(appointment.getEnd());
 
 		VEvent meeting = new VEvent(start, end, appointment.getTitle());
-		meeting = addVEventpropsfromAppointment(appointment, meeting);
+		addVEventpropsfromAppointment(appointment, meeting);
 		icsCalendar.getComponents().add(meeting);
 
 		return icsCalendar;
@@ -416,8 +418,7 @@ public class IcalUtils {
 	 * @param meeting     VEvent of the Appointment
 	 * @return Updated VEvent
 	 */
-	private static VEvent addVEventpropsfromAppointment(Appointment appointment, VEvent meeting) {
-
+	private static void addVEventpropsfromAppointment(Appointment appointment, VEvent meeting) {
 		if (appointment.getLocation() != null) {
 			meeting.getProperties().add(new Location(appointment.getLocation()));
 		}
@@ -440,14 +441,14 @@ public class IcalUtils {
 
 		if (appointment.getMeetingMembers() != null) {
 			for (MeetingMember meetingMember : appointment.getMeetingMembers()) {
-				Attendee attendee = new Attendee(URI.create("mailto:" +
-						meetingMember.getUser().getAddress().getEmail()));
+				Attendee attendee = new Attendee(URI.create(MAILTO
+						+ meetingMember.getUser().getAddress().getEmail()));
 				attendee.getParameters().add(Role.REQ_PARTICIPANT);
 				attendee.getParameters().add(new Cn(meetingMember.getUser().getLogin()));
 				meeting.getProperties().add(attendee);
 			}
 		}
-		URI orgUri = URI.create("mailto:" + appointment.getOwner().getAddress().getEmail());
+		URI orgUri = URI.create(MAILTO + appointment.getOwner().getAddress().getEmail());
 		Attendee orgAtt = new Attendee(orgUri);
 		orgAtt.getParameters().add(Role.CHAIR);
 		Cn orgCn = new Cn(appointment.getOwner().getLogin());
@@ -457,8 +458,6 @@ public class IcalUtils {
 		Organizer organizer = new Organizer(orgUri);
 		organizer.getParameters().add(orgCn);
 		meeting.getProperties().add(organizer);
-
-		return meeting;
 	}
 
 	/**
@@ -488,7 +487,7 @@ public class IcalUtils {
 			DateTime start = new DateTime(appointment.getStart()), end = new DateTime(appointment.getEnd());
 
 			VEvent meeting = new VEvent(start, end, appointment.getTitle());
-			meeting = addVEventpropsfromAppointment(appointment, meeting);
+			addVEventpropsfromAppointment(appointment, meeting);
 			icsCalendar.getComponents().add(meeting);
 		}
 		return icsCalendar;

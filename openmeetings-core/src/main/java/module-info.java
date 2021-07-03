@@ -37,3 +37,4 @@ module apache.openmeetings.core {
 	requires jodconverter.core;
 	requires jodconverter.local;
 }
+

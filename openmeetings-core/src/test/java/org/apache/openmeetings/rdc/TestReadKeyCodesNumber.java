@@ -18,15 +18,15 @@
  */
 package org.apache.openmeetings.rdc;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class TestReadKeyCodesNumber {
+class TestReadKeyCodesNumber {
 	private static final Logger log = LoggerFactory.getLogger(TestReadKeyCodesNumber.class);
 
 	@Test
-	public void testTestKeyCodesNumber() {
+	void testTestKeyCodesNumber() {
 		try {
 
 			this.testKeyCodes();
@@ -37,7 +37,7 @@ public class TestReadKeyCodesNumber {
 	}
 
 	@Test
-	public void testKeyCodes() {
+	void testKeyCodes() {
 		try {
 
 		} catch (Exception err) {

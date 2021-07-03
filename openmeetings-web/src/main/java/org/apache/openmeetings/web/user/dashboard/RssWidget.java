@@ -21,7 +21,6 @@ package org.apache.openmeetings.web.user.dashboard;
 import org.apache.openmeetings.web.app.Application;
 import org.apache.wicket.model.Model;
 import org.wicketstuff.dashboard.AbstractWidget;
-import org.wicketstuff.dashboard.Widget;
 import org.wicketstuff.dashboard.WidgetLocation;
 import org.wicketstuff.dashboard.web.WidgetView;
 
@@ -30,20 +29,21 @@ public class RssWidget extends AbstractWidget {
 	public static final String WIDGET_ID_RSS = "RssWidget";
 
 	public RssWidget() {
-		super();
 		location = new WidgetLocation(1, 1);
-		init();
 	}
 
 	@Override
-	public void init() {
-		super.init();
-		title = Application.getString("277");
-		id = WIDGET_ID_RSS;
+	public String getId() {
+		return WIDGET_ID_RSS;
+	}
+
+	@Override
+	public String getTitle() {
+		return Application.getString("277");
 	}
 
 	@Override
 	public WidgetView createView(String viewId) {
-		return new RssWidgetView(viewId, new Model<Widget>(this));
+		return new RssWidgetView(viewId, new Model<>(this));
 	}
 }

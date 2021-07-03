@@ -19,7 +19,10 @@
 package org.apache.openmeetings.core.remote;
 
 import static java.util.UUID.randomUUID;
+import static org.apache.openmeetings.core.remote.KurentoHandler.MODE_TEST;
 import static org.apache.openmeetings.core.remote.KurentoHandler.PARAM_CANDIDATE;
+import static org.apache.openmeetings.core.remote.KurentoHandler.TAG_MODE;
+import static org.apache.openmeetings.core.remote.KurentoHandler.TAG_ROOM;
 import static org.apache.openmeetings.core.remote.KurentoHandler.sendError;
 import static org.apache.openmeetings.core.remote.TestStreamProcessor.newTestKurentoMsg;
 import static org.apache.openmeetings.util.OmFileHelper.EXTENSION_WEBM;
@@ -27,14 +30,18 @@ import static org.apache.openmeetings.util.OmFileHelper.TEST_SETUP_PREFIX;
 import static org.apache.openmeetings.util.OmFileHelper.getStreamsDir;
 
 import java.io.File;
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import javax.inject.Inject;
+
 import org.apache.openmeetings.core.util.WebSocketHelper;
 import org.apache.openmeetings.db.entity.basic.IWsClient;
 import org.apache.openmeetings.util.OmFileHelper;
+import org.apache.wicket.injection.Injector;
 import org.kurento.client.Continuation;
 import org.kurento.client.IceCandidate;
 import org.kurento.client.MediaPipeline;
@@ -50,6 +57,13 @@ import com.github.openjson.JSONObject;
 
 public class KTestStream extends AbstractStream {
 	private static final Logger log = LoggerFactory.getLogger(KTestStream.class);
+	private static final Map<String, String> TAGS = Map.of(TAG_MODE, MODE_TEST, TAG_ROOM, MODE_TEST);
+
+	@Inject
+	private KurentoHandler kHandler;
+	@Inject
+	private TestStreamProcessor processor;
+
 	private MediaPipeline pipeline;
 	private WebRtcEndpoint webRtcEndpoint;
 	private PlayerEndpoint player;
@@ -59,10 +73,14 @@ public class KTestStream extends AbstractStream {
 	private ScheduledFuture<?> recHandle;
 	private int recTime;
 
-	public KTestStream(IWsClient c, JSONObject msg, MediaPipeline pipeline) {
+	public KTestStream(IWsClient c, JSONObject msg) {
 		super(null, c.getUid());
-		this.pipeline = pipeline;
-		webRtcEndpoint = createWebRtcEndpoint(pipeline);
+		Injector.get().inject(this);
+		createPipeline(() -> startTestRecording(c, msg));
+	}
+
+	private void startTestRecording(IWsClient c, JSONObject msg) {
+		webRtcEndpoint = createWebRtcEndpoint(pipeline, null, kHandler.getCertificateType());
 		webRtcEndpoint.connect(webRtcEndpoint);
 
 		MediaProfileSpecType profile = getProfile(msg);
@@ -122,40 +140,52 @@ public class KTestStream extends AbstractStream {
 		});
 	}
 
-	public void play(final IWsClient inClient, JSONObject msg, MediaPipeline inPipeline) {
-		this.pipeline = inPipeline;
-		webRtcEndpoint = createWebRtcEndpoint(pipeline);
-		player = createPlayerEndpoint(pipeline, recPath);
-		player.connect(webRtcEndpoint);
-		webRtcEndpoint.addMediaSessionStartedListener(evt -> {
-				log.info("Media session started {}", evt);
-				player.addErrorListener(event -> {
-						log.info("ErrorEvent for player with uid '{}': {}", inClient.getUid(), event.getDescription());
-						sendPlayEnd(inClient);
-					});
-				player.addEndOfStreamListener(event -> {
-						log.info("EndOfStreamEvent for player with uid '{}'", inClient.getUid());
-						sendPlayEnd(inClient);
-					});
-				player.play();
-			});
+	public void play(final IWsClient inClient, JSONObject msg) {
+		createPipeline(() -> {
+			webRtcEndpoint = createWebRtcEndpoint(pipeline, true, kHandler.getCertificateType());
+			player = createPlayerEndpoint(pipeline, recPath);
+			player.connect(webRtcEndpoint);
+			webRtcEndpoint.addMediaSessionStartedListener(evt -> {
+					log.info("Media session started {}", evt);
+					player.addErrorListener(event -> {
+							log.info("ErrorEvent for player with uid '{}': {}", inClient.getUid(), event.getDescription());
+							sendPlayEnd(inClient);
+						});
+					player.addEndOfStreamListener(event -> {
+							log.info("EndOfStreamEvent for player with uid '{}'", inClient.getUid());
+							sendPlayEnd(inClient);
+						});
+					player.play();
+				});
+			addIceListener(inClient);
 
-		String sdpOffer = msg.getString("sdpOffer");
-		String sdpAnswer = webRtcEndpoint.processOffer(sdpOffer);
+			WebSocketHelper.sendClient(inClient, newTestKurentoMsg()
+					.put("id", "playResponse")
+					.put("sdpAnswer", webRtcEndpoint.processOffer(msg.getString("sdpOffer"))));
 
-		addIceListener(inClient);
-
-		WebSocketHelper.sendClient(inClient, newTestKurentoMsg()
-				.put("id", "playResponse")
-				.put("sdpAnswer", sdpAnswer));
-
-		webRtcEndpoint.gatherCandidates();
+			webRtcEndpoint.gatherCandidates();
+		});
 	}
 
 	public void addCandidate(IceCandidate cand) {
 		if (webRtcEndpoint != null) {
 			webRtcEndpoint.addIceCandidate(cand);
 		}
+	}
+
+	private void createPipeline(Runnable action) {
+		release(false);
+		this.pipeline = kHandler.createPipiline(TAGS, new Continuation<Void>() {
+			@Override
+			public void onSuccess(Void result) throws Exception {
+				action.run();
+			}
+
+			@Override
+			public void onError(Throwable cause) throws Exception {
+				log.warn("Unable to create pipeline for test stream", cause);
+			}
+		});
 	}
 
 	private void addIceListener(IWsClient inClient) {
@@ -192,6 +222,13 @@ public class KTestStream extends AbstractStream {
 		recPath = OmFileHelper.getRecUri(f);
 	}
 
+	private void releaseEndpoint() {
+		if (webRtcEndpoint != null) {
+			webRtcEndpoint.release();
+			webRtcEndpoint = null;
+		}
+	}
+
 	private void releasePipeline() {
 		if (pipeline != null) {
 			pipeline.release();
@@ -200,29 +237,29 @@ public class KTestStream extends AbstractStream {
 	}
 
 	private void releaseRecorder() {
-		releasePipeline();
+		releaseEndpoint();
 		if (recorder != null) {
 			recorder.release();
 			recorder = null;
 		}
+		releasePipeline();
 	}
 
 	private void releasePlayer() {
-		releasePipeline();
+		releaseEndpoint();
 		if (player != null) {
 			player.release();
 			player = null;
 		}
+		releasePipeline();
 	}
 
 	@Override
-	public void release(IStreamProcessor processor, boolean remove) {
-		if (webRtcEndpoint != null) {
-			webRtcEndpoint.release();
-			webRtcEndpoint = null;
-		}
+	public void release(boolean remove) {
 		releasePlayer();
 		releaseRecorder();
-		processor.release(this);
+		if (remove) {
+			processor.release(this, true);
+		}
 	}
 }

@@ -26,7 +26,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.wicket.AttributeModifier;
+import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
+import org.apache.wicket.ajax.attributes.AjaxRequestAttributes;
 import org.apache.wicket.markup.html.link.AbstractLink;
 import org.apache.wicket.model.Model;
 import org.apache.wicket.util.string.Strings;
@@ -41,20 +43,34 @@ import de.agilecoders.wicket.core.markup.html.bootstrap.navbar.NavbarDropDownBut
 public class OmMenuItem implements INavbarComponent {
 	private static final long serialVersionUID = 1L;
 
-	private String title;
-	private String desc;
-	private IconType icon;
-	private List<INavbarComponent> items = new ArrayList<>(0);
+	private final String title;
+	private final String desc;
+	private final IconType icon;
+	private final List<INavbarComponent> items = new ArrayList<>(0);
 	private boolean visible = true;
 
-	public OmMenuItem(String title, List<INavbarComponent> items) {
-		this.title = title;
-		this.items = items;
+	public OmMenuItem(String title, String desc) {
+		this(title, desc, null, List.of());
 	}
 
-	public OmMenuItem(String title, String desc) {
+	public OmMenuItem(String title, String desc, boolean visible) {
+		this(title, desc);
+		this.visible = visible;
+	}
+
+	public OmMenuItem(String title, List<INavbarComponent> items) {
+		this(title, null, null, items);
+	}
+
+	public OmMenuItem(String title, String desc, IconType icon) {
+		this(title, desc, icon, List.of());
+	}
+
+	public OmMenuItem(String title, String desc, IconType icon, List<INavbarComponent> items) {
 		this.title = title;
 		this.desc = desc;
+		this.icon = icon;
+		this.items.addAll(items);
 	}
 
 	public OmMenuItem add(INavbarComponent item) {
@@ -66,53 +82,72 @@ public class OmMenuItem implements INavbarComponent {
 		return desc;
 	}
 
-	public void setDesc(String desc) {
-		this.desc = desc;
-	}
-
-	public void setIcon(IconType icon) {
-		this.icon = icon;
-	}
-
 	public void setVisible(boolean visible) {
 		this.visible = visible;
+	}
+
+	public boolean hasItems() {
+		return !items.isEmpty();
 	}
 
 	@Override
 	public AbstractLink create(String markupId) {
 		AbstractLink item;
-		if (Strings.isEmpty(title)) {
-			item = new MenuDivider();
-		} else if (items.isEmpty()) {
-			item = new NavbarAjaxLink<String>(markupId, Model.of(title)) {
-				private static final long serialVersionUID = 1L;
-
-				@Override
-				public void onClick(AjaxRequestTarget target) {
-					OmMenuItem.this.onClick(target);
-				}
-			}.setIconType(icon);
-			item.add(AttributeModifier.append(ATTR_CLASS, "nav-link"));
+		if (items.isEmpty()) {
+			item = createLink(markupId, true);
 		} else {
 			item = new NavbarDropDownButton(Model.of(title), Model.of(icon)) {
 				private static final long serialVersionUID = 1L;
 
 				@Override
 				protected List<AbstractLink> newSubMenuButtons(String markupId) {
-					return items.stream().map(mItem -> ((OmMenuItem)mItem).create(markupId)).collect(Collectors.toList());
+					return items.stream().map(mItem -> ((OmMenuItem)mItem).createLink(markupId, false)).collect(Collectors.toList());
 				}
 			};
+			setAttributes(item);
 		}
-		item.add(AttributeModifier.append(ATTR_TITLE, desc));
-		item.setVisible(visible);
 		return item;
+	}
+
+	private AbstractLink createLink(String markupId, boolean topLevel) {
+		if (Strings.isEmpty(title)) {
+			return new MenuDivider();
+		}
+		NavbarAjaxLink<String> link = new NavbarAjaxLink<>(markupId, Model.of(title)) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public void onClick(AjaxRequestTarget target) {
+				OmMenuItem.this.onClick(target);
+			}
+
+			@Override
+			protected void updateAjaxAttributes(AjaxRequestAttributes attributes) {
+				OmMenuItem.this.updateAjaxAttributes(attributes);
+			}
+		};
+		if (topLevel) {
+			link.add(AttributeModifier.append(ATTR_CLASS, "nav-link"));
+		}
+		setAttributes(link);
+		return link.setIconType(icon);
+	}
+
+	private void setAttributes(Component comp) {
+		comp.add(AttributeModifier.append(ATTR_TITLE, desc));
+		comp.setVisible(visible);
 	}
 
 	@Override
 	public ComponentPosition getPosition() {
-		return ComponentPosition.LEFT; //FIXME TODO
+		return ComponentPosition.LEFT;
 	}
 
-	public void onClick(AjaxRequestTarget target) {
+	protected void onClick(AjaxRequestTarget target) {
+		// no-op by default
+	}
+
+	protected void updateAjaxAttributes(AjaxRequestAttributes attributes) {
+		// no-op by default
 	}
 }

@@ -22,8 +22,11 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.ATTR_CLASS;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.ATTR_TITLE;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_REDIRECT_URL_FOR_EXTERNAL;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getBaseUrl;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.isMyRoomsEnabled;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
 import static org.apache.openmeetings.web.util.GroupLogoResourceReference.getUrl;
+import static org.apache.openmeetings.web.util.OmUrlFragment.ROOMS_GROUP;
+import static org.apache.openmeetings.web.util.OmUrlFragment.ROOMS_MY;
 import static org.apache.openmeetings.web.util.OmUrlFragment.ROOMS_PUBLIC;
 
 import java.util.ArrayList;
@@ -47,7 +50,7 @@ import org.apache.openmeetings.web.app.ClientManager;
 import org.apache.openmeetings.web.app.WebSession;
 import org.apache.openmeetings.web.common.ImagePanel;
 import org.apache.openmeetings.web.common.menu.MenuPanel;
-import org.apache.openmeetings.web.common.menu.RoomMenuItem;
+import org.apache.openmeetings.web.common.menu.OmMenuItem;
 import org.apache.openmeetings.web.room.OmTimerBehavior;
 import org.apache.openmeetings.web.room.RoomPanel;
 import org.apache.wicket.AttributeModifier;
@@ -91,8 +94,7 @@ public class RoomMenuPanel extends Panel {
 		}
 	};
 	private final RoomPanel room;
-	private RoomMenuItem exitMenuItem;
-	private RoomMenuItem filesMenu;
+	private OmMenuItem exitMenuItem;
 	private final ImagePanel logo = new ImagePanel("logo") {
 		private static final long serialVersionUID = 1L;
 
@@ -103,6 +105,7 @@ public class RoomMenuPanel extends Panel {
 	};
 	private final PollsSubMenu pollsSubMenu;
 	private final ActionsSubMenu actionsSubMenu;
+	private final ExtrasSubMenu extrasSubMenu;
 	@SpringBean
 	private ClientManager cm;
 	@SpringBean
@@ -127,6 +130,7 @@ public class RoomMenuPanel extends Panel {
 		shareBtn.setOutputMarkupId(true).setOutputMarkupPlaceholderTag(true);
 		pollsSubMenu = new PollsSubMenu(room, this);
 		actionsSubMenu = new ActionsSubMenu(room, this);
+		extrasSubMenu = new ExtrasSubMenu(room);
 	}
 
 	private Group getGroup() {
@@ -138,18 +142,18 @@ public class RoomMenuPanel extends Panel {
 
 	@Override
 	protected void onInitialize() {
-		exitMenuItem = new RoomMenuItem(getString("308"), getString("309"), FontAwesome5IconType.sign_out_alt_s) {
+		exitMenuItem = new OmMenuItem(getString("308"), getString("309"), FontAwesome5IconType.sign_out_alt_s) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
-			public void onClick(AjaxRequestTarget target) {
+			protected void onClick(AjaxRequestTarget target) {
 				chatDao.closeMessages(getUserId());
 				exit(target);
 			}
 		};
-		filesMenu = new RoomMenuItem(getString("245"), null, false);
 		actionsSubMenu.init();
 		pollsSubMenu.init();
+		extrasSubMenu.init();
 		add((menuPanel = new MenuPanel("menu", getMenu())).setVisible(isVisible()));
 
 		add(askBtn.add(AttributeModifier.replace(ATTR_TITLE, getString("84"))));
@@ -182,18 +186,7 @@ public class RoomMenuPanel extends Panel {
 
 	private List<INavbarComponent> getMenu() {
 		List<INavbarComponent> menu = new ArrayList<>();
-		exitMenuItem.setVisible(false);
 		menu.add(exitMenuItem);
-
-		filesMenu.add(new RoomMenuItem(getString("15"), getString("1479")) {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			public void onClick(AjaxRequestTarget target) {
-				room.getSidebar().showUpload(target);
-			}
-		});
-		menu.add(filesMenu);
 
 		if (actionsSubMenu.isVisible()) {
 			menu.add(actionsSubMenu.getMenu());
@@ -201,6 +194,7 @@ public class RoomMenuPanel extends Panel {
 		if (pollsSubMenu.isVisible()) {
 			menu.add(pollsSubMenu.getMenu());
 		}
+		menu.add(extrasSubMenu.getMenu());
 		return menu;
 	}
 
@@ -209,11 +203,8 @@ public class RoomMenuPanel extends Panel {
 			return;
 		}
 		Room r = room.getRoom();
-		boolean isInterview = Room.Type.INTERVIEW == r.getType();
 		User u = room.getClient().getUser();
 		boolean notExternalUser = u.getType() != User.Type.CONTACT;
-		exitMenuItem.setVisible(notExternalUser);
-		filesMenu.setVisible(!isInterview && room.getSidebar().isShowFiles());
 		boolean moder = room.getClient().hasRight(Room.Right.MODERATOR);
 		actionsSubMenu.update(moder, notExternalUser);
 		pollsSubMenu.update(moder, notExternalUser, r);
@@ -237,6 +228,7 @@ public class RoomMenuPanel extends Panel {
 		handler.add(roomName.add(AttributeModifier.replace(ATTR_CLASS, roomClass), AttributeModifier.replace(ATTR_TITLE, roomTitle)));
 		handler.add(askBtn.setVisible(!moder && r.isAllowUserQuestions()));
 		handler.add(shareBtn.setVisible(room.screenShareAllowed()));
+		handler.appendJavaScript("$('#share-dlg-btn').off().click(Sharer.open);");
 	}
 
 	public void updatePoll(IPartialPageRequestHandler handler, Long createdBy) {
@@ -247,8 +239,16 @@ public class RoomMenuPanel extends Panel {
 	public void exit(IPartialPageRequestHandler handler) {
 		cm.exitRoom(room.getClient());
 		if (WebSession.getRights().contains(User.Right.DASHBOARD)) {
-			room.getMainPanel().updateContents(ROOMS_PUBLIC, handler);
+			final Room r = room.getRoom();
+			if (isMyRoomsEnabled() && r != null && getUserId().equals(r.getOwnerId())) {
+				room.getMainPanel().updateContents(ROOMS_MY, handler);
+			} else if (r != null && !r.getIspublic()) {
+				room.getMainPanel().updateContents(ROOMS_GROUP, handler);
+			} else {
+				room.getMainPanel().updateContents(ROOMS_PUBLIC, handler);
+			}
 		} else {
+			WebSession.get().invalidate();
 			String url = cfgDao.getString(CONFIG_REDIRECT_URL_FOR_EXTERNAL, "");
 			throw new RedirectToUrlException(Strings.isEmpty(url) ? getBaseUrl() : url);
 		}

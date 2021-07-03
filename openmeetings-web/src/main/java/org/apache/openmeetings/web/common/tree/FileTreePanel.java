@@ -18,17 +18,21 @@
  */
 package org.apache.openmeetings.web.common.tree;
 
+import static de.agilecoders.wicket.core.markup.html.bootstrap.dialog.Modal.BUTTON_MARKUP_ID;
 import static java.time.Duration.ZERO;
 import static java.util.UUID.randomUUID;
 import static org.apache.openmeetings.util.OmFileHelper.EXTENSION_JPG;
+import static org.apache.openmeetings.util.OmFileHelper.EXTENSION_MP4;
 import static org.apache.openmeetings.util.OmFileHelper.EXTENSION_PDF;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.ATTR_CLASS;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.ATTR_TITLE;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
 import static org.apache.openmeetings.web.common.BasePanel.EVT_CLICK;
+import static org.apache.openmeetings.web.pages.BasePage.ALIGN_LEFT;
+import static org.apache.openmeetings.web.pages.BasePage.ALIGN_RIGHT;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,8 +44,10 @@ import org.apache.openmeetings.db.entity.file.BaseFileItem;
 import org.apache.openmeetings.db.entity.file.BaseFileItem.Type;
 import org.apache.openmeetings.db.entity.file.FileItem;
 import org.apache.openmeetings.db.entity.record.Recording;
+import org.apache.openmeetings.util.OmFileHelper;
 import org.apache.openmeetings.web.common.NameDialog;
 import org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder;
+import org.apache.openmeetings.web.common.confirmation.ConfirmationDialog;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxEventBehavior;
@@ -55,6 +61,8 @@ import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.link.AbstractLink;
+import org.apache.wicket.markup.html.list.ListItem;
+import org.apache.wicket.markup.html.list.ListView;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.Model;
@@ -71,6 +79,7 @@ import com.googlecode.wicket.jquery.core.ajax.JQueryAjaxBehavior;
 import com.googlecode.wicket.jquery.ui.interaction.droppable.Droppable;
 import com.googlecode.wicket.jquery.ui.interaction.droppable.DroppableBehavior;
 
+import de.agilecoders.wicket.core.markup.html.bootstrap.behavior.CssClassNameAppender;
 import de.agilecoders.wicket.core.markup.html.bootstrap.button.BootstrapAjaxLink;
 import de.agilecoders.wicket.core.markup.html.bootstrap.button.ButtonBehavior;
 import de.agilecoders.wicket.core.markup.html.bootstrap.button.Buttons;
@@ -80,18 +89,17 @@ import de.agilecoders.wicket.extensions.markup.html.bootstrap.icon.FontAwesome5I
 
 public abstract class FileTreePanel extends Panel {
 	private static final long serialVersionUID = 1L;
-	private static final String ALIGN_LEFT_CLASS = " align-left";
-	private static final String ALIGN_RIGHT_CLASS = " align-right";
 	private static final String BASE_CLASS = " om-icon big clickable";
-	private static final String UPLOAD_CLASS = "add" + BASE_CLASS + ALIGN_LEFT_CLASS;
-	private static final String CREATE_DIR_CLASS = "folder-create" + BASE_CLASS + ALIGN_LEFT_CLASS;
-	private static final String TRASH_CLASS = "trash" + BASE_CLASS + ALIGN_RIGHT_CLASS;
+	private static final String UPLOAD_CLASS = "upload" + BASE_CLASS + " " + ALIGN_LEFT;
+	private static final String CREATE_DIR_CLASS = "folder-create" + BASE_CLASS + " " + ALIGN_LEFT;
+	private static final String TRASH_CLASS = "trash" + BASE_CLASS + " " + ALIGN_RIGHT;
 	private static final String DISABLED_CLASS = " disabled";
 	final WebMarkupContainer trees = new WebMarkupContainer("tree-container");
 	private final WebMarkupContainer sizes = new WebMarkupContainer("sizes");
 	private BaseFileItem lastSelected = null;
 	private Map<String, BaseFileItem> selected = new HashMap<>();
 	private File dwnldFile;
+	private String dwnldName;
 	final AjaxDownloadBehavior downloader = new AjaxDownloadBehavior(new IResource() {
 		private static final long serialVersionUID = 1L;
 
@@ -104,6 +112,7 @@ public abstract class FileTreePanel extends Panel {
 				protected ResourceResponse createResourceResponse(Attributes attr, Path path) {
 					ResourceResponse response = super.createResourceResponse(attr, path);
 					response.setCacheDuration(ZERO);
+					response.setFileName(dwnldName);
 					return response;
 				}
 			}.respond(attributes);
@@ -112,60 +121,8 @@ public abstract class FileTreePanel extends Panel {
 	protected final IModel<String> homeSize = Model.of((String)null);
 	protected final IModel<String> publicSize = Model.of((String)null);
 	final ConvertingErrorsDialog errorsDialog = new ConvertingErrorsDialog("errors", Model.of((Recording)null));
-	final FileItemTree tree;
-	private final SplitButton download = new SplitButton("download", Model.of("")) {
-		private static final long serialVersionUID = 1L;
-
-		private AbstractLink createLink(String markupId, IModel<String> model, String ext) {
-			return new BootstrapAjaxLink<>(markupId, model, Buttons.Type.Outline_Primary, model) {
-				private static final long serialVersionUID = 1L;
-
-				@Override
-				public boolean isEnabled() {
-					File f = null;
-					if (getSelected().size() == 1) {
-						f = getLastSelected().getFile(ext);
-					}
-					return f != null && f.exists();
-				}
-
-				@Override
-				public void onClick(AjaxRequestTarget target) {
-					onDownlownClick(target, ext);
-				}
-			}.setIconType(FontAwesome5IconType.download_s);
-		}
-
-		@Override
-		protected List<AbstractLink> newSubMenuButtons(String buttonMarkupId) {
-			return List.of(
-					createLink(buttonMarkupId, new ResourceModel("files.download.original"), null)
-					, createLink(buttonMarkupId, new ResourceModel("files.download.pdf"), EXTENSION_PDF)
-					, createLink(buttonMarkupId, new ResourceModel("files.download.jpg"), EXTENSION_JPG)
-					);
-		}
-
-		@Override
-		protected void addButtonBehavior(ButtonBehavior buttonBehavior) {
-			buttonBehavior.setSize(Buttons.Size.Small).setType(Buttons.Type.Outline_Secondary);
-			super.addButtonBehavior(buttonBehavior);
-		}
-
-		@Override
-		protected AbstractLink newBaseButton(String markupId, IModel<String> labelModel, IModel<IconType> iconTypeModel) {
-			return createLink(markupId, new ResourceModel("files.download.original"), null);
-		}
-
-		public void onDownlownClick(AjaxRequestTarget target, String ext) {
-			BaseFileItem fi = getLastSelected();
-			File f = ext == null && (Type.IMAGE == fi.getType() || Type.PRESENTATION == fi.getType())
-					? fi.getOriginal() : fi.getFile(ext);
-			if (f != null && f.exists()) {
-				dwnldFile = f;
-				downloader.initiate(target);
-			}
-		}
-	};
+	FileItemTree tree;
+	private final WebMarkupContainer buttons = new WebMarkupContainer("buttons");
 	private final Form<Void> form = new Form<>("form");
 	private final NameDialog addFolder;
 	private ConfirmableAjaxBorder trashBorder;
@@ -180,25 +137,26 @@ public abstract class FileTreePanel extends Panel {
 		}
 	});
 	private final Component upload = new WebMarkupContainer("upload");
+	private ConfirmationDialog confirmTrashDialog;
+
 	@SpringBean
 	private RecordingDao recDao;
 	@SpringBean
 	private FileItemDao fileDao;
 
-	public FileTreePanel(String id, Long roomId, NameDialog addFolder) {
+	protected FileTreePanel(String id, Long roomId, NameDialog addFolder) {
 		super(id);
 		this.roomId = roomId;
 		this.addFolder = addFolder;
-		final OmTreeProvider tp = new OmTreeProvider(roomId);
-		select(tp.getRoot(), null, false, false);
-		form.add(tree = new FileItemTree("tree", this, tp));
-		form.add(download.setVisible(false).setOutputMarkupPlaceholderTag(true));
-		add(form.add(downloader));
 	}
 
 	@Override
 	protected void onInitialize() {
 		super.onInitialize();
+		final OmTreeProvider tp = new OmTreeProvider(roomId);
+		select(tp.getRoot(), null, false, false);
+		form.add(tree = new FileItemTree("tree", this, tp));
+		add(form.add(downloader));
 		Droppable<BaseFileItem> trashToolbar = new Droppable<>("trash-toolbar") {
 			private static final long serialVersionUID = 1L;
 
@@ -255,41 +213,126 @@ public abstract class FileTreePanel extends Panel {
 			}
 		}));
 		trashToolbar.add(getTrashBorder());
+		add(confirmTrashDialog);
 
 		form.add(trees.add(tree).setOutputMarkupId(true));
 		updateSizes();
 		form.add(sizes.add(new Label("homeSize", homeSize), new Label("publicSize", publicSize)).setOutputMarkupId(true));
 		form.add(errorsDialog);
 		setReadOnly(false, null);
+		final SplitButton download = new SplitButton("download", Model.of("")) {
+			private static final long serialVersionUID = 1L;
+
+			private boolean isDownloadable(BaseFileItem f) {
+				return !f.isReadOnly() && (Type.PRESENTATION == f.getType() || Type.IMAGE == f.getType() || Type.RECORDING == f.getType());
+			}
+
+			private AbstractLink createLink(String markupId, IModel<String> model, String ext) {
+				return new BootstrapAjaxLink<>(markupId, model, Buttons.Type.Outline_Primary, model) {
+					private static final long serialVersionUID = 1L;
+
+					@Override
+					protected void onConfigure() {
+						super.onConfigure();
+						for (CssClassNameAppender b : getBehaviors(CssClassNameAppender.class)) {
+							remove(b);
+						}
+						File f = null;
+						if (getSelected().size() == 1) {
+							BaseFileItem fi = getLastSelected();
+							if (isDownloadable(fi)) {
+								f = fi.getFile(ext);
+							}
+						}
+						setEnabled(f != null && f.exists());
+					}
+
+					@Override
+					public void onClick(AjaxRequestTarget target) {
+						onDownlownClick(target, ext);
+					}
+				}.setIconType(FontAwesome5IconType.download_s);
+			}
+
+			@Override
+			protected List<AbstractLink> newSubMenuButtons(String buttonMarkupId) {
+				return List.of(
+						createLink(buttonMarkupId, new ResourceModel("files.download.original"), null)
+						, createLink(buttonMarkupId, new ResourceModel("files.download.pdf"), EXTENSION_PDF)
+						, createLink(buttonMarkupId, new ResourceModel("files.download.jpg"), EXTENSION_JPG)
+						, createLink(buttonMarkupId, Model.of(EXTENSION_MP4), EXTENSION_MP4)
+						);
+			}
+
+			@Override
+			protected void addButtonBehavior(ButtonBehavior buttonBehavior) {
+				buttonBehavior.setSize(Buttons.Size.Small).setType(Buttons.Type.Outline_Secondary);
+				super.addButtonBehavior(buttonBehavior);
+			}
+
+			@Override
+			protected AbstractLink newBaseButton(String markupId, IModel<String> labelModel, IModel<IconType> iconTypeModel) {
+				AbstractLink btn = createLink(markupId, Model.of(""), null);
+				btn.add(AttributeModifier.append(ATTR_TITLE, new ResourceModel("867")));
+				return btn;
+			}
+
+			@Override
+			protected void onConfigure() {
+				super.onConfigure();
+				boolean enabled = false;
+				if (getSelected().size() == 1) {
+					enabled = isDownloadable(getLastSelected());
+				}
+				setEnabled(enabled);
+			}
+
+			public void onDownlownClick(AjaxRequestTarget target, String ext) {
+				BaseFileItem fi = getLastSelected();
+				File f = ext == null && (Type.IMAGE == fi.getType() || Type.PRESENTATION == fi.getType())
+						? fi.getOriginal() : fi.getFile(ext);
+				if (f != null && f.exists()) {
+					dwnldFile = f;
+					String fileExt = OmFileHelper.getFileExt(f.getName());
+					dwnldName = fi.getName();
+					if (!dwnldName.endsWith(fileExt)) {
+						dwnldName += "." + fileExt;
+					}
+					downloader.initiate(target);
+				}
+			}
+		};
+		buttons.setOutputMarkupId(true);
+		form.add(buttons.add(download, new ListView<>("other-buttons", newOtherButtons(BUTTON_MARKUP_ID)) {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			protected void populateItem(ListItem<AbstractLink> item) {
+				item.add(item.getModelObject());
+			}
+		}));
 	}
 
 	private ConfirmableAjaxBorder getTrashBorder() {
 		if (trashBorder == null) {
-			trashBorder = new ConfirmableAjaxBorder("trash", new ResourceModel("80"), new ResourceModel("713")) {
+			confirmTrashDialog = new ConfirmationDialog("trash-confirm-dialog", new ResourceModel("80"), new ResourceModel("713")) {
 				private static final long serialVersionUID = 1L;
-
-				@Override
-				protected boolean isClickable() {
-					return !readOnly && !selected.isEmpty();
-				}
 
 				@Override
 				protected void onConfirm(AjaxRequestTarget target) {
 					deleteAll(target);
 				}
 			};
+			trashBorder = new ConfirmableAjaxBorder("trash", confirmTrashDialog) {
+				private static final long serialVersionUID = 1L;
+
+				@Override
+				protected boolean isClickable() {
+					return !readOnly && !selected.isEmpty();
+				}
+			};
 		}
 		return trashBorder;
-	}
-
-	public FileTreePanel setBorderTitle(IModel<String> title) {
-		getTrashBorder().setTitle(title);
-		return this;
-	}
-
-	public FileTreePanel setBorderMessage(IModel<String> message) {
-		getTrashBorder().setMessage(message);
-		return this;
 	}
 
 	@Override
@@ -298,6 +341,10 @@ public abstract class FileTreePanel extends Panel {
 		response.render(JavaScriptHeaderItem.forReference(new JavaScriptResourceReference(FileTreePanel.class, "filetree.js")));
 	}
 
+	/**
+	 * can be overridden by children to provide custom containment
+	 * @return custom containment
+	 */
 	protected String getContainment() {
 		return ".file.item.drop.area";
 	}
@@ -358,7 +405,6 @@ public abstract class FileTreePanel extends Panel {
 		f.setName(name);
 		f.setHash(randomUUID().toString());
 		f.setInsertedBy(getUserId());
-		f.setInserted(new Date());
 		f.setType(Type.FOLDER);
 		f.setOwnerId(p.getOwnerId());
 		f.setGroupId(p.getGroupId());
@@ -428,10 +474,6 @@ public abstract class FileTreePanel extends Panel {
 		return false;
 	}
 
-	private static boolean isDownloadable(BaseFileItem f) {
-		return !f.isReadOnly() && (f.getType() == Type.PRESENTATION || f.getType() == Type.IMAGE);
-	}
-
 	public void select(BaseFileItem fi, AjaxRequestTarget target, boolean shift, boolean ctrl) {
 		updateSelected(target); //all previously selected are in update list
 		if (ctrl) {
@@ -467,8 +509,12 @@ public abstract class FileTreePanel extends Panel {
 		}
 		updateSelected(target); //all finally selected are in the update list
 		if (target != null) {
-			target.add(trashBorder, download.setVisible(isDownloadable(lastSelected)));
+			target.add(trashBorder, buttons);
 		}
+	}
+
+	protected List<AbstractLink> newOtherButtons(String markupId) {
+		return List.of();
 	}
 
 	@Override

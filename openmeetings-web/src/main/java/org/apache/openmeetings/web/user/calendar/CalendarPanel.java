@@ -43,6 +43,7 @@ import org.apache.openmeetings.db.entity.calendar.OmCalendar;
 import org.apache.openmeetings.service.calendar.caldav.AppointmentManager;
 import org.apache.openmeetings.web.app.WebSession;
 import org.apache.openmeetings.web.common.UserBasePanel;
+import org.apache.openmeetings.web.util.TouchPunchResourceReference;
 import org.apache.wicket.ajax.AbstractAjaxTimerBehavior;
 import org.apache.wicket.ajax.AjaxEventBehavior;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -281,15 +282,10 @@ public class CalendarPanel extends UserBasePanel {
 				final OmCalendar cal = item.getModelObject();
 				item.add(new WebMarkupContainer("item")
 						.add(new Label("name", cal.getTitle())));
-				item.add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						calendarDialog.show(target, CalendarDialog.DIALOG_TYPE.UPDATE_CALENDAR, cal);
-						target.add(calendarDialog);
-					}
-				});
+				item.add(AjaxEventBehavior.onEvent(EVT_CLICK, target -> {
+					calendarDialog.show(target, CalendarDialog.DIALOG_TYPE.UPDATE_CALENDAR, cal);
+					target.add(calendarDialog);
+				}));
 			}
 		});
 
@@ -323,7 +319,9 @@ public class CalendarPanel extends UserBasePanel {
 		syncTimer.stop(handler);
 		if (client != null) {
 			apptManager.cleanupIdleConnections();
-			context.getCredentialsProvider().clear();
+			if (context != null) {
+				context.getCredentialsProvider().clear();
+			}
 		}
 	}
 
@@ -344,6 +342,7 @@ public class CalendarPanel extends UserBasePanel {
 	public void renderHead(IHeaderResponse response) {
 		super.renderHead(response);
 		response.render(JavaScriptHeaderItem.forReference(CALJS));
+		response.render(JavaScriptHeaderItem.forReference(TouchPunchResourceReference.instance()));
 	}
 
 	// Client creation here, because the client is not created until necessary

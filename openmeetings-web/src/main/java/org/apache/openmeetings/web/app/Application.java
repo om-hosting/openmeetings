@@ -22,6 +22,7 @@ import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_EXT_PROC
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getApplicationName;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getBaseUrl;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getExtProcessTtl;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.getTheme;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getWicketApplicationName;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.isInitComplete;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.setExtProcessTtl;
@@ -35,22 +36,23 @@ import static org.wicketstuff.dashboard.DashboardContextInitializer.DASHBOARD_CO
 import java.io.File;
 import java.net.UnknownHostException;
 import java.text.MessageFormat;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Stream;
 
 import javax.websocket.WebSocketContainer;
 
 import org.apache.openmeetings.IApplication;
+import org.apache.openmeetings.core.sip.SipManager;
+import org.apache.openmeetings.core.util.ChatWebSocketHelper;
 import org.apache.openmeetings.core.util.WebSocketHelper;
 import org.apache.openmeetings.db.dao.basic.ConfigurationDao;
 import org.apache.openmeetings.db.dao.calendar.AppointmentDao;
 import org.apache.openmeetings.db.dao.label.LabelDao;
 import org.apache.openmeetings.db.dao.record.RecordingDao;
-import org.apache.openmeetings.db.dao.server.OAuth2Dao;
 import org.apache.openmeetings.db.dao.user.UserDao;
 import org.apache.openmeetings.db.entity.basic.Client;
 import org.apache.openmeetings.db.entity.calendar.Appointment;
@@ -62,14 +64,17 @@ import org.apache.openmeetings.db.entity.room.RoomGroup;
 import org.apache.openmeetings.db.entity.user.GroupUser;
 import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.db.entity.user.User.Type;
+import org.apache.openmeetings.db.util.ApplicationHelper;
 import org.apache.openmeetings.db.util.ws.RoomMessage;
 import org.apache.openmeetings.db.util.ws.TextRoomMessage;
 import org.apache.openmeetings.util.OmFileHelper;
 import org.apache.openmeetings.util.Version;
 import org.apache.openmeetings.util.ws.IClusterWsMessage;
+import org.apache.openmeetings.web.common.PingResourceReference;
 import org.apache.openmeetings.web.pages.AccessDeniedPage;
 import org.apache.openmeetings.web.pages.ActivatePage;
 import org.apache.openmeetings.web.pages.HashPage;
+import org.apache.openmeetings.web.pages.InternalErrorPage;
 import org.apache.openmeetings.web.pages.MainPage;
 import org.apache.openmeetings.web.pages.NotInitedPage;
 import org.apache.openmeetings.web.pages.PrivacyPage;
@@ -79,6 +84,7 @@ import org.apache.openmeetings.web.pages.install.InstallWizardPage;
 import org.apache.openmeetings.web.room.GroupCustomCssResourceReference;
 import org.apache.openmeetings.web.room.RoomPreviewResourceReference;
 import org.apache.openmeetings.web.room.RoomResourceReference;
+import org.apache.openmeetings.web.room.sidebar.RoomFileUploadResourceReference;
 import org.apache.openmeetings.web.room.wb.WbWebSocketHelper;
 import org.apache.openmeetings.web.user.dashboard.MyRoomsWidgetDescriptor;
 import org.apache.openmeetings.web.user.dashboard.RecentRoomsWidgetDescriptor;
@@ -103,31 +109,29 @@ import org.apache.wicket.authroles.authentication.AuthenticatedWebApplication;
 import org.apache.wicket.core.request.handler.BookmarkableListenerRequestHandler;
 import org.apache.wicket.core.request.handler.ListenerRequestHandler;
 import org.apache.wicket.core.request.mapper.MountedMapper;
-import org.apache.wicket.csp.CSPDirective;
-import org.apache.wicket.csp.CSPDirectiveSrcValue;
-import org.apache.wicket.csp.CSPHeaderConfiguration;
-import org.apache.wicket.markup.head.IHeaderResponse;
 import org.apache.wicket.markup.head.filter.FilteringHeaderResponse;
-import org.apache.wicket.markup.html.IHeaderResponseDecorator;
 import org.apache.wicket.markup.html.WebPage;
 import org.apache.wicket.pageStore.IPageStore;
 import org.apache.wicket.pageStore.SerializingPageStore;
-import org.apache.wicket.protocol.ws.WebSocketAwareCsrfPreventionRequestCycleListener;
+import org.apache.wicket.protocol.ws.WebSocketAwareResourceIsolationRequestCycleListener;
 import org.apache.wicket.request.IRequestHandler;
 import org.apache.wicket.request.Response;
 import org.apache.wicket.request.Url;
+import org.apache.wicket.request.Url.StringMode;
 import org.apache.wicket.request.component.IRequestablePage;
 import org.apache.wicket.request.cycle.RequestCycle;
 import org.apache.wicket.request.http.WebResponse;
 import org.apache.wicket.request.mapper.info.PageComponentInfo;
 import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.request.mapper.parameter.PageParametersEncoder;
+import org.apache.wicket.settings.ExceptionSettings;
 import org.apache.wicket.spring.injection.annot.SpringComponentInjector;
 import org.apache.wicket.util.string.Strings;
 import org.apache.wicket.validation.validator.UrlValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 import org.wicketstuff.dashboard.WidgetRegistry;
@@ -136,18 +140,19 @@ import org.wicketstuff.dashboard.web.DashboardSettings;
 import org.wicketstuff.datastores.hazelcast.HazelcastDataStore;
 
 import com.googlecode.wicket.jquery.ui.plugins.wysiwyg.settings.WysiwygLibrarySettings;
+import com.hazelcast.cluster.Member;
+import com.hazelcast.cluster.MembershipEvent;
+import com.hazelcast.cluster.MembershipListener;
+import com.hazelcast.config.Config;
 import com.hazelcast.config.XmlConfigBuilder;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
-import com.hazelcast.core.ITopic;
-import com.hazelcast.core.Member;
-import com.hazelcast.core.MemberAttributeEvent;
-import com.hazelcast.core.MembershipEvent;
-import com.hazelcast.core.MembershipListener;
+import com.hazelcast.topic.ITopic;
 
 import de.agilecoders.wicket.core.Bootstrap;
 import de.agilecoders.wicket.core.settings.BootstrapSettings;
 import de.agilecoders.wicket.core.settings.IBootstrapSettings;
+import de.agilecoders.wicket.core.settings.NoopThemeProvider;
 import de.agilecoders.wicket.themes.markup.html.bootswatch.BootswatchTheme;
 import de.agilecoders.wicket.themes.markup.html.bootswatch.BootswatchThemeProvider;
 
@@ -158,18 +163,18 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 	private static final String INVALID_SESSIONS_KEY = "INVALID_SESSIONS_KEY";
 	private static final String SERVER_CONTAINER_SERVLET_CONTEXT_ATTRIBUTE = "javax.websocket.server.ServerContainer";
 	public static final String NAME_ATTR_KEY = "name";
+	public static final String SERVER_URL_ATTR_KEY = "server.url";
 	//additional maps for faster searching should be created
-	private static final Set<String> STRINGS_WITH_APP = new HashSet<>();
+	static final Set<String> STRINGS_WITH_APP = Set.of("500", "506", "511", "512", "513", "517", "widget.start.desc"
+			, "1151", "1155", "1157", "1158", "1194"); // package private for testing
 	private static String appName;
-	static {
-		STRINGS_WITH_APP.addAll(List.of("499", "500", "506", "511", "512", "513", "517", "532", "622", "widget.start.desc"
-				, "909", "952", "978", "981", "984", "989", "990", "999", "1151", "1155", "1157", "1158", "1194"));
-	}
 	public static final String HASH_MAPPING = "/hash";
 	public static final String SIGNIN_MAPPING = "/signin";
 	public static final String NOTINIT_MAPPING = "/notinited";
-	final HazelcastInstance hazelcast = Hazelcast.getOrCreateHazelcastInstance(new XmlConfigBuilder().build());
+	HazelcastInstance hazelcast;
 	private ITopic<IClusterWsMessage> hazelWsTopic;
+	private String serverId;
+	private final Set<String> wsUrls = new HashSet<>();
 
 	@Autowired
 	private ApplicationContext ctx;
@@ -180,44 +185,61 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 	@Autowired
 	private UserDao userDao;
 	@Autowired
+	private UserManager userManager;
+	@Autowired
 	private ClientManager cm;
+	@Autowired
+	private WhiteboardManager wbManager;
 	@Autowired
 	private AppointmentDao appointmentDao;
 	@Autowired
-	private OAuth2Dao oauthDao;
+	private SipManager sipManager;
+	@Value("${remember.me.encryption.key}")
+	private String rememberMeKey;
+	@Value("${remember.me.encryption.salt}")
+	private String rememberMeSalt;
 
 	@Override
 	protected void init() {
 		setWicketApplicationName(super.getName());
-		getSecuritySettings().setAuthenticationStrategy(new OmAuthenticationStrategy());
+		getSecuritySettings().setAuthenticationStrategy(new OmAuthenticationStrategy(rememberMeKey, rememberMeSalt));
 		getApplicationSettings().setAccessDeniedPage(AccessDeniedPage.class);
+		getApplicationSettings().setInternalErrorPage(InternalErrorPage.class);
+		getExceptionSettings().setUnexpectedExceptionDisplay(ExceptionSettings.SHOW_INTERNAL_ERROR_PAGE);
 		getComponentInstantiationListeners().add(new SpringComponentInjector(this, ctx, true));
 
-		hazelcast.getCluster().getLocalMember().setStringAttribute(NAME_ATTR_KEY, hazelcast.getName());
+		Config cfg = new XmlConfigBuilder().build();
+		cfg.setClassLoader(getClass().getClassLoader());
+		hazelcast = Hazelcast.getOrCreateHazelcastInstance(cfg);
+		serverId = hazelcast.getName();
+		hazelcast.getCluster().getMembers().forEach(m -> cm.serverAdded(m.getAttribute(NAME_ATTR_KEY), m.getAttribute(SERVER_URL_ATTR_KEY)));
 		hazelWsTopic = hazelcast.getTopic("default");
 		hazelWsTopic.addMessageListener(msg -> {
-			String serverId = msg.getPublishingMember().getStringAttribute(NAME_ATTR_KEY);
-			if (serverId.equals(hazelcast.getName())) {
+			String mServerId = msg.getPublishingMember().getAttribute(NAME_ATTR_KEY);
+			if (mServerId.equals(serverId)) {
 				return;
 			}
-			WbWebSocketHelper.send(msg.getMessageObject());
+			IClusterWsMessage wsMsg = msg.getMessageObject();
+			if (WbWebSocketHelper.send(wsMsg)) {
+				return;
+			}
+			if (ChatWebSocketHelper.send(msg.getMessageObject())) {
+				return;
+			}
+			WebSocketHelper.send(msg.getMessageObject());
 		});
 		hazelcast.getCluster().addMembershipListener(new MembershipListener() {
 			@Override
 			public void memberRemoved(MembershipEvent evt) {
 				//server down, need to remove all online clients, process persistent addresses
-				String serverId = evt.getMember().getStringAttribute(NAME_ATTR_KEY);
-				cm.clean(serverId);
+				String serverId = evt.getMember().getAttribute(NAME_ATTR_KEY);
+				cm.serverRemoved(serverId);
 				updateJpaAddresses();
 			}
 
 			@Override
-			public void memberAttributeChanged(MemberAttributeEvent evt) {
-				//no-op
-			}
-
-			@Override
 			public void memberAdded(MembershipEvent evt) {
+				//no-op
 				//server added, need to process persistent addresses
 				updateJpaAddresses();
 				//check for duplicate instance-names
@@ -226,12 +248,14 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 					if (evt.getMember().getUuid().equals(m.getUuid())) {
 						continue;
 					}
-					String serverId = m.getStringAttribute(NAME_ATTR_KEY);
+					String serverId = m.getAttribute(NAME_ATTR_KEY);
 					names.add(serverId);
 				}
-				String serverId = evt.getMember().getStringAttribute(NAME_ATTR_KEY);
-				if (names.contains(serverId)) {
-					log.warn("Duplicate cluster instance with name {} found {}", serverId, evt.getMember());
+				String newServerId = evt.getMember().getAttribute(NAME_ATTR_KEY);
+				log.warn("Name added: {}", newServerId);
+				cm.serverAdded(newServerId, evt.getMember().getAttribute(SERVER_URL_ATTR_KEY));
+				if (names.contains(newServerId)) {
+					log.warn("Duplicate cluster instance with name {} found {}", newServerId, evt.getMember());
 				}
 			}
 		});
@@ -247,8 +271,16 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 		//chain of Resource Loaders, if not found it will search in Wicket's internal
 		//Resource Loader for a the property key
 		getResourceSettings().getStringResourceLoaders().add(0, new LabelResourceLoader());
-		final CSPHeaderConfiguration cspConfig = getCspConfig().strict();
-		getRequestCycleListeners().add(new WebSocketAwareCsrfPreventionRequestCycleListener() {
+		getRequestCycleListeners().add(new WebSocketAwareResourceIsolationRequestCycleListener() {
+			@Override
+			public void onBeginRequest(RequestCycle cycle) {
+				String wsUrl = getWsUrl(cycle.getRequest().getUrl());
+				if (wsUrl != null && !wsUrls.contains(wsUrl)) {
+					wsUrls.add(wsUrl);
+					cfgDao.updateCsp();
+				}
+			}
+
 			@Override
 			public void onEndRequest(RequestCycle cycle) {
 				Response resp = cycle.getResponse();
@@ -258,13 +290,6 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 						wresp.setHeader("X-XSS-Protection", "1; mode=block");
 						wresp.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
 						wresp.setHeader("X-Content-Type-Options", "nosniff");
-						/*Url reqUrl = cycle.getRequest().getUrl();
-						wresp.setHeader("Content-Security-Policy"
-								, String.format("%s; connect-src 'self' %s; frame-src %s;"
-										, getContentSecurityPolicy(), getWsUrl(reqUrl)
-										, getxFrameOptions()
-								));
-						*/
 					}
 				}
 			}
@@ -273,15 +298,9 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 		if (sc != null) {
 			sc.setDefaultMaxSessionIdleTimeout(60 * 1000L); // should be enough, should it be configurable?
 		}
-		getHeaderResponseDecorators().add(new IHeaderResponseDecorator() {
-			@Override
-			public IHeaderResponse decorate(IHeaderResponse response) {
-				return new FilteringHeaderResponse(response);
-			}
-		});
+		getHeaderResponseDecorators().add(FilteringHeaderResponse::new);
 		super.init();
 		final IBootstrapSettings settings = new BootstrapSettings();
-		settings.setThemeProvider(new BootswatchThemeProvider(BootswatchTheme.Sandstone));//FIXME TODO new SingleThemeProvider(new MaterialDesignTheme())
 		Bootstrap.builder().withBootstrapSettings(settings).install(this);
 		WysiwygLibrarySettings.get().setBootstrapCssReference(null);
 		WysiwygLibrarySettings.get().setBootstrapDropDownJavaScriptReference(null);
@@ -309,13 +328,16 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 		mountPage("install", InstallWizardPage.class);
 		mountPage("activate", ActivatePage.class);
 		mountPage("reset", ResetPage.class);
+		mountPage("error", InternalErrorPage.class);
 		mountResource("/recordings/mp4/${id}", new Mp4RecordingResourceReference());
 		mountResource("/recordings/png/${id}", new PngRecordingResourceReference()); //should be in sync with VideoPlayer
 		mountResource("/room/file/${id}", new RoomResourceReference());
 		mountResource("/room/preview/${id}", new RoomPreviewResourceReference());
+		mountResource("/room/file/upload", new RoomFileUploadResourceReference());
 		mountResource("/profile/${id}", new ProfileImageResourceReference());
 		mountResource("/group/${id}", new GroupLogoResourceReference());
 		mountResource("/group/customcss/${id}", new GroupCustomCssResourceReference());
+		mountResource("/ping", new PingResourceReference());
 
 		log.debug("Application::init");
 		try {
@@ -328,23 +350,21 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 
 			// Init all global config properties
 			cfgDao.reinit();
+			wbManager.init();
+			cm.init();
 
 			// Init properties
 			updateJpaAddresses();
 			setExtProcessTtl(cfgDao.getInt(CONFIG_EXT_PROCESS_TTL, getExtProcessTtl()));
 			Version.logOMStarted();
 			recordingDao.resetProcessingStatus(); //we are starting so all processing recordings are now errors
-
-			getCspSettings().blocking().disabled(); //FIXME TODO due to `reporting-only enabled`
-			oauthDao.getActive().forEach(oauth -> {
-				if (!Strings.isEmpty(oauth.getIconUrl())) {
-					cspConfig.add(CSPDirective.IMG_SRC, oauth.getIconUrl());
-				}
-			});
-			cspConfig.add(CSPDirective.STYLE_SRC, "https://fonts.googleapis.com/css"); //Roboto font FIXME TODO should this be moved to configs???
-			cspConfig.add(CSPDirective.FONT_SRC, "https://fonts.gstatic.com"); //Roboto font FIXME TODO should this be moved to configs???
-			cspConfig.add(CSPDirective.MEDIA_SRC, CSPDirectiveSrcValue.SELF);
+			userManager.initHttpClient();
 			setInitComplete(true);
+			CompletableFuture.runAsync(() -> {
+				ThreadContext.setApplication(Application.this);
+				ApplicationHelper.ensureRequestCycle(Application.this);
+				sipManager.setUserPicture(u -> ProfileImageResourceReference.getUrl(RequestCycle.get(), u));
+			});
 		} catch (Exception err) {
 			log.error("[appStart]", err);
 		}
@@ -372,10 +392,6 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 				return super.mapHandler(requestHandler);
 			}
 		}
-	}
-
-	public CSPHeaderConfiguration getCspConfig() {
-		return getCspSettings().reporting();
 	}
 
 	public static OmAuthenticationStrategy getAuthenticationStrategy() {
@@ -418,7 +434,6 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 	public static void kickUser(Client client) {
 		if (client != null) {
 			WebSocketHelper.sendRoom(new TextRoomMessage(client.getRoom().getId(), client, RoomMessage.Type.KICK, client.getUid()));
-			get().cm.exitRoom(client);
 		}
 	}
 
@@ -453,11 +468,11 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 		return getString(key, getLocale(languageId));
 	}
 
-	public static String getString(String key, final Locale loc, String... _params) {
+	public static String getString(String key, final Locale loc, String... inParams) {
 		if (!exists()) {
 			ThreadContext.setApplication(org.apache.wicket.Application.get(appName));
 		}
-		String[] params = _params;
+		String[] params = inParams;
 		if ((params == null || params.length == 0) && STRINGS_WITH_APP.contains(key)) {
 			params = new String[]{getApplicationName()};
 		}
@@ -586,6 +601,9 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 		RequestCycle rc = RequestCycle.get();
 		String baseUrl = isUrlValid(inBaseUrl) ? inBaseUrl
 				: (isUrlValid(getBaseUrl()) ? getBaseUrl() : "");
+		if (!Strings.isEmpty(baseUrl) && !baseUrl.endsWith("/")) {
+			baseUrl += "/";
+		}
 		return rc.getUrlRenderer().renderFullUrl(Url.parse(baseUrl + rc.mapUrlFor(clazz, pp)));
 	}
 
@@ -606,11 +624,7 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 
 	@Override
 	public String getServerId() {
-		return hazelcast.getName();
-	}
-
-	public List<Member> getServers() {
-		return new ArrayList<>(hazelcast.getCluster().getMembers());
+		return serverId;
 	}
 
 	@Override
@@ -637,20 +651,48 @@ public class Application extends AuthenticatedWebApplication implements IApplica
 		hazelWsTopic.publish(msg);
 	}
 
-	private static String getWsUrl(Url reqUrl) {
+	@Override
+	public Set<String> getWsUrls() {
+		return Set.copyOf(wsUrls);
+	}
+
+	@Override
+	public void updateTheme() {
+		BootswatchTheme theme = Stream.of(BootswatchTheme.values())
+				.filter(v -> v.name().equalsIgnoreCase(getTheme()))
+				.findFirst()
+				.orElse(null);
+		IBootstrapSettings settings = Bootstrap.getSettings(this);
+		settings.setThemeProvider(theme == null ? new NoopThemeProvider()
+				: new BootswatchThemeProvider(theme));
+		if (WebSession.exists()) {
+			settings.getActiveThemeProvider().setActiveTheme(theme == null
+					? settings.getThemeProvider().defaultTheme()
+					: settings.getThemeProvider().byName(theme.name()));
+		}
+	}
+
+	// package private for testing
+	static String getWsUrl(Url reqUrl) {
+		if (!reqUrl.isFull()) {
+			return null;
+		}
 		final boolean insecure = "http".equalsIgnoreCase(reqUrl.getProtocol());
 		String delim = ":";
-		String port = reqUrl.getPort() == null || reqUrl.getPort() < 0 ? "" : String.valueOf(reqUrl.getPort());
-		if (!port.isEmpty() && ((insecure && 80 == reqUrl.getPort()) || (!insecure && 443 == reqUrl.getPort()))) {
+		String port;
+		if (reqUrl.getPort() == null || reqUrl.getPort() < 0
+				|| (insecure && 80 == reqUrl.getPort())
+				|| (!insecure && 443 == reqUrl.getPort()))
+		{
 			port = "";
-		}
-		if (port.isEmpty()) {
 			delim = "";
+		} else {
+			port = String.valueOf(reqUrl.getPort());
 		}
-		return String.format("%s://%s%s%s;"
-			, insecure ? "ws" : "wss"
-			, reqUrl.getHost()
-			, delim
-			, port);
+		String url = (insecure ? "ws" : "wss") + "://" + reqUrl.getHost() + delim + port;
+		if (log.isTraceEnabled()) {
+			log.trace("Getting WS url from '{}', result: '{}'", reqUrl.toString(StringMode.FULL), url);
+		}
+		return url;
 	}
 }

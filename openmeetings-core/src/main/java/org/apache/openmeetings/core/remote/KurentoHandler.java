@@ -19,25 +19,29 @@
  */
 package org.apache.openmeetings.core.remote;
 
-import static java.util.UUID.randomUUID;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
-import java.util.HashMap;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.directory.api.util.Strings;
 import org.apache.openmeetings.core.util.WebSocketHelper;
-import org.apache.openmeetings.db.dao.record.RecordingChunkDao;
 import org.apache.openmeetings.db.dao.room.RoomDao;
 import org.apache.openmeetings.db.entity.basic.Client;
 import org.apache.openmeetings.db.entity.basic.Client.Activity;
@@ -49,25 +53,32 @@ import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.db.manager.IClientManager;
 import org.apache.openmeetings.db.util.ws.RoomMessage;
 import org.apache.openmeetings.db.util.ws.TextRoomMessage;
+import org.apache.wicket.util.string.Strings;
+import org.kurento.client.CertificateKeyType;
+import org.kurento.client.Continuation;
 import org.kurento.client.Endpoint;
 import org.kurento.client.EventListener;
 import org.kurento.client.KurentoClient;
-import org.kurento.client.KurentoConnectionListener;
 import org.kurento.client.MediaObject;
 import org.kurento.client.MediaPipeline;
 import org.kurento.client.ObjectCreatedEvent;
 import org.kurento.client.PlayerEndpoint;
 import org.kurento.client.RecorderEndpoint;
+import org.kurento.client.RtpEndpoint;
 import org.kurento.client.Tag;
 import org.kurento.client.Transaction;
 import org.kurento.client.WebRtcEndpoint;
+import org.kurento.jsonrpc.client.JsonRpcClientNettyWebSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
 import com.github.openjson.JSONArray;
 import com.github.openjson.JSONObject;
 
+@Component
 public class KurentoHandler {
 	private static final Logger log = LoggerFactory.getLogger(KurentoHandler.class);
 	public static final String PARAM_ICE = "iceServers";
@@ -77,23 +88,36 @@ public class KurentoHandler {
 	public static final String TAG_KUID = "kuid";
 	public static final String TAG_MODE = "mode";
 	public static final String TAG_ROOM = "roomId";
+	public static final String TAG_STREAM_UID = "streamUid";
 	private static final String HMAC_SHA1_ALGORITHM = "HmacSHA1";
 	private final ScheduledExecutorService kmsRecheckScheduler = Executors.newScheduledThreadPool(1);
 	public static final String KURENTO_TYPE = "kurento";
-	private static int FLOWOUT_TIMEOUT_SEC = 5;
-	private long checkTimeout = 120000; //ms
-	private long objCheckTimeout = 200; //ms
-	private int watchThreadCount = 10;
+	private static int flowoutTimeout = 5;
+	@Value("${kurento.ws.url}")
 	private String kurentoWsUrl;
+	@Value("${kurento.turn.url}")
 	private String turnUrl;
+	@Value("${kurento.turn.user}")
 	private String turnUser;
+	@Value("${kurento.turn.secret}")
 	private String turnSecret;
+	@Value("${kurento.turn.mode}")
 	private String turnMode;
+	@Value("${kurento.turn.ttl}")
 	private int turnTtl = 60; //minutes
-	private KurentoClient client;
-	private boolean connected = false;
+	@Value("${kurento.check.timeout}")
+	private long checkTimeout = 120000; //ms
+	@Value("${kurento.object.check.timeout}")
+	private long objCheckTimeout = 200; //ms
+	@Value("${kurento.watch.thread.count}")
+	private int watchThreadCount = 10;
+	@Value("${kurento.kuid}")
 	private String kuid;
+	private CertificateKeyType certificateType;
+	private KurentoClient client;
+	private final AtomicBoolean connected = new AtomicBoolean(false);
 	private final Map<Long, KRoom> rooms = new ConcurrentHashMap<>();
+	private final Set<String> ignoredKuids = new HashSet<>();
 	private Runnable check;
 
 	@Autowired
@@ -101,54 +125,104 @@ public class KurentoHandler {
 	@Autowired
 	private RoomDao roomDao;
 	@Autowired
-	private RecordingChunkDao chunkDao;
-	@Autowired
 	private TestStreamProcessor testProcessor;
 	@Autowired
 	private StreamProcessor streamProcessor;
 
 	boolean isConnected() {
-		boolean connctd = client != null && !client.isClosed() && connected;
+		boolean connctd = connected.get() && client != null && !client.isClosed();
 		if (!connctd) {
 			log.warn(WARN_NO_KURENTO);
 		}
 		return connctd;
 	}
 
+	@PostConstruct
 	public void init() {
 		check = () -> {
 			try {
-				kuid = randomUUID().toString();
-				client = KurentoClient.create(kurentoWsUrl, new KConnectionListener(kuid));
-				client.getServerManager().addObjectCreatedListener(new KWatchDog());
+				if (client != null) {
+					return;
+				}
+				log.debug("Reconnecting KMS");
+				client = KurentoClient.createFromJsonRpcClient(new JsonRpcClientNettyWebSocket(kurentoWsUrl) {
+						{
+							setTryReconnectingMaxTime(0);
+						}
+
+						private void notifyRooms(boolean connected) {
+							WebSocketHelper.sendServer(new TextRoomMessage(null, new User(), RoomMessage.Type.KURENTO_STATUS, new JSONObject().put("connected", connected).toString()));
+						}
+
+						private void onDisconnect() {
+							log.info("!!! Kurento disconnected");
+							connected.set(false);
+							notifyRooms(false);
+							clean();
+						}
+
+						@Override
+						protected void handleReconnectDisconnection(final int statusCode, final String closeReason) {
+							if (!isClosedByUser()) {
+								log.debug("{}JsonRpcWsClient disconnected from {} because {}.", label, uri, closeReason);
+								onDisconnect();
+							} else {
+								super.handleReconnectDisconnection(statusCode, closeReason);
+								onDisconnect();
+							}
+						}
+
+						@Override
+						protected void fireConnected() {
+							log.info("!!! Kurento connected");
+							connected.set(true);
+							notifyRooms(true);
+						}
+					});
+				client.getServerManager().addObjectCreatedListener(new KWatchDogCreate());
+				client.getServerManager().addObjectDestroyedListener(event ->
+					log.debug("Kurento::ObjectDestroyedEvent objectId {}, tags {}, source {}", event.getObjectId(), event.getTags(), event.getSource())
+				);
 			} catch (Exception e) {
-				log.warn("Fail to create Kurento client, will re-try in {} ms", checkTimeout);
-				kmsRecheckScheduler.schedule(check, checkTimeout, MILLISECONDS);
+				connected.set(false);
+				clean();
+				log.warn("Fail to create Kurento client, will re-try in {} ms", checkTimeout, e);
 			}
 		};
-		check.run();
+		kmsRecheckScheduler.scheduleAtFixedRate(check, 0L, checkTimeout, MILLISECONDS);
 	}
 
+	@PreDestroy
 	public void destroy() {
+		clean();
+		kmsRecheckScheduler.shutdownNow();
+	}
+
+	private void clean() {
 		if (client != null) {
-			kuid = randomUUID().toString(); // will be changed to prevent double events
-			client.destroy();
-			for (Entry<Long, KRoom> e : rooms.entrySet()) {
-				e.getValue().close(streamProcessor);
+			try {
+				KurentoClient copy = client;
+				client = null;
+				if (!copy.isClosed()) {
+					log.debug("Client will be destroyed ...");
+					copy.destroy();
+					log.debug(".... Client is destroyed");
+				}
+				testProcessor.destroy();
+				streamProcessor.destroy();
+				for (Entry<Long, KRoom> e : rooms.entrySet()) {
+					e.getValue().close();
+				}
+				rooms.clear();
+			} catch (Exception e) {
+				log.error("Unexpected error while clean-up", e);
 			}
-			testProcessor.destroy();
-			streamProcessor.destroy();
-			rooms.clear();
-			client = null;
 		}
 	}
 
 	private static Map<String, String> tagsAsMap(MediaObject pipe) {
-		Map<String, String> map = new HashMap<>();
-		for (Tag t : pipe.getTags()) {
-			map.put(t.getKey(), t.getValue());
-		}
-		return map;
+		return pipe.getTags().stream()
+				.collect(Collectors.toMap(Tag::getKey, Tag::getValue));
 	}
 
 	Transaction beginTransaction() {
@@ -208,7 +282,7 @@ public class KurentoHandler {
 	}
 
 	public void remove(IWsClient c) {
-		if (!isConnected() ||c == null) {
+		if (!isConnected() || c == null) {
 			return;
 		}
 		if (!(c instanceof Client)) {
@@ -218,23 +292,29 @@ public class KurentoHandler {
 		streamProcessor.remove((Client)c);
 	}
 
-	KRoom getRoom(Long roomId) {
-		log.debug("Searching for room {}", roomId);
-		KRoom room = rooms.get(roomId);
+	MediaPipeline createPipiline(Map<String, String> tags, Continuation<Void> continuation) {
+		Transaction t = beginTransaction();
+		MediaPipeline pipe = client.createMediaPipeline(t);
+		pipe.addTag(t, TAG_KUID, kuid);
+		tags.forEach((key, value) -> pipe.addTag(t, key, value));
+		t.commit(continuation);
+		return pipe;
+	}
 
-		if (room == null) {
+	KRoom getRoom(Long roomId) {
+		return rooms.computeIfAbsent(roomId, k -> {
 			log.debug("Room {} does not exist. Will create now!", roomId);
 			Room r = roomDao.get(roomId);
-			Transaction t = beginTransaction();
-			MediaPipeline pipe = client.createMediaPipeline(t);
-			pipe.addTag(t, TAG_KUID, kuid);
-			pipe.addTag(t, TAG_ROOM, String.valueOf(roomId));
-			t.commit();
-			room = new KRoom(r, pipe, chunkDao);
-			rooms.put(roomId, room);
-		}
-		log.debug("Room {} found!", roomId);
-		return room;
+			return new KRoom(r);
+		});
+	}
+
+	public Collection<KRoom> getRooms() {
+		return rooms.values();
+	}
+
+	public void updateSipCount(Room r, long count) {
+		getRoom(r.getId()).updateSipCount(count);
 	}
 
 	static JSONObject newKurentoMsg() {
@@ -259,11 +339,11 @@ public class KurentoHandler {
 		return r;
 	}
 
-	public JSONArray getTurnServers() {
-		return getTurnServers(false);
+	public JSONArray getTurnServers(Client c) {
+		return getTurnServers(c, false);
 	}
 
-	JSONArray getTurnServers(final boolean test) {
+	JSONArray getTurnServers(Client c, final boolean test) {
 		JSONArray arr = new JSONArray();
 		if (!Strings.isEmpty(turnUrl)) {
 			try {
@@ -273,7 +353,10 @@ public class KurentoHandler {
 					mac.init(new SecretKeySpec(turnSecret.getBytes(), HMAC_SHA1_ALGORITHM));
 					StringBuilder user = new StringBuilder()
 							.append((test ? 60 : turnTtl * 60) + System.currentTimeMillis() / 1000L);
-					if (!Strings.isEmpty(turnUser)) {
+					final String uid = c == null ? null : c.getUid();
+					if (!Strings.isEmpty(uid)) {
+						user.append(':').append(uid);
+					} else if (!Strings.isEmpty(turnUser)) {
 						user.append(':').append(turnUser);
 					}
 					turn.put("username", user)
@@ -282,9 +365,18 @@ public class KurentoHandler {
 					turn.put("username", turnUser)
 						.put("credential", turnSecret);
 				}
-				final String fturnUrl = "turn:" + turnUrl;
-				turn.put("url", fturnUrl); // old-school
-				turn.put("urls", fturnUrl);
+
+				JSONArray urls = new JSONArray();
+				final String[] turnUrls = turnUrl.split(",");
+				for (String url : turnUrls) {
+					if (url.startsWith("stun:") || url.startsWith("stuns:") || url.startsWith("turn:") || url.startsWith("turns:")) {
+						urls.put(url);
+					} else {
+						urls.put("turn:" + url);
+					}
+				}
+				turn.put("urls", urls);
+
 				arr.put(turn);
 			} catch (NoSuchAlgorithmException|InvalidKeyException e) {
 				log.error("Unexpected error while creating turn", e);
@@ -301,100 +393,44 @@ public class KurentoHandler {
 		return kuid;
 	}
 
-	public void setCheckTimeout(long checkTimeout) {
-		this.checkTimeout = checkTimeout;
+	@Value("${kurento.certificateType}")
+	public void setCertificateType(String certificateType) {
+		if (certificateType.isEmpty()) {
+			return;
+		}
+		this.certificateType = CertificateKeyType.valueOf(certificateType);
 	}
 
-	public void setObjCheckTimeout(long objCheckTimeout) {
-		this.objCheckTimeout = objCheckTimeout;
-	}
-
-	public void setWatchThreadCount(int watchThreadCount) {
-		this.watchThreadCount = watchThreadCount;
-	}
-
-	public void setKurentoWsUrl(String kurentoWsUrl) {
-		this.kurentoWsUrl = kurentoWsUrl;
-	}
-
-	public void setTurnUrl(String turnUrl) {
-		this.turnUrl = turnUrl;
-	}
-
-	public void setTurnUser(String turnUser) {
-		this.turnUser = turnUser;
-	}
-
-	public void setTurnSecret(String turnSecret) {
-		this.turnSecret = turnSecret;
-	}
-
-	public void setTurnMode(String turnMode) {
-		this.turnMode = turnMode;
-	}
-
-	public void setTurnTtl(int turnTtl) {
-		this.turnTtl = turnTtl;
-	}
-
-	public void setFlowoutTimeout(int timeout) {
-		FLOWOUT_TIMEOUT_SEC = timeout;
+	public CertificateKeyType getCertificateType() {
+		return certificateType;
 	}
 
 	static int getFlowoutTimeout() {
-		return FLOWOUT_TIMEOUT_SEC;
+		return flowoutTimeout;
 	}
 
-	private class KConnectionListener implements KurentoConnectionListener {
-		final String lkuid;
+	@Value("${kurento.flowout.timeout}")
+	private void setFlowoutTimeout(int timeout) {
+		flowoutTimeout = timeout;
+	}
 
-		private KConnectionListener(final String lkuid) {
-			this.lkuid = lkuid;
-		}
-
-		private void notifyRooms() {
-			WebSocketHelper.sendServer(new TextRoomMessage(null, new User(), RoomMessage.Type.KURENTO_STATUS, new JSONObject().put("connected", isConnected()).toString()));
-		}
-
-		@Override
-		public void reconnected(boolean sameServer) {
-			log.error("Kurento reconnected ? {}, this shouldn't happen", sameServer);
-		}
-
-		@Override
-		public void disconnected() {
-			if (lkuid.equals(kuid)) {
-				log.warn("Disconnected, will re-try in {} ms", checkTimeout);
-				connected = false;
-				notifyRooms();
-				destroy();
-				kmsRecheckScheduler.schedule(check, checkTimeout, MILLISECONDS);
-			}
-		}
-
-		@Override
-		public void connectionFailed() {
-			// this handled seems to be called multiple times
-		}
-
-		@Override
-		public void connected() {
-			log.info("Kurento connected");
-			connected = true;
-			notifyRooms();
+	@Value("${kurento.ignored.kuids}")
+	private void setIgnoredKuids(String ignoredKuids) {
+		if (!Strings.isEmpty(ignoredKuids)) {
+			this.ignoredKuids.addAll(List.of(ignoredKuids.split("[, ]")));
 		}
 	}
 
-	private class KWatchDog implements EventListener<ObjectCreatedEvent> {
+	private class KWatchDogCreate implements EventListener<ObjectCreatedEvent> {
 		private ScheduledExecutorService scheduler;
 
-		public KWatchDog() {
+		public KWatchDogCreate() {
 			scheduler = Executors.newScheduledThreadPool(watchThreadCount);
 		}
 
 		@Override
 		public void onEvent(ObjectCreatedEvent evt) {
-			log.debug("Kurento::ObjectCreated -> {}", evt.getObject());
+			log.debug("Kurento::ObjectCreated -> {}, source {}", evt.getObject(), evt.getSource());
 			if (evt.getObject() instanceof MediaPipeline) {
 				// room created
 				final String roid = evt.getObject().getId();
@@ -405,17 +441,28 @@ public class KurentoHandler {
 					// still alive
 					MediaPipeline pipe = client.getById(roid, MediaPipeline.class);
 					Map<String, String> tags = tagsAsMap(pipe);
-					if (validTestPipeline(tags)) {
-						return;
-					}
-					if (kuid.equals(tags.get(TAG_KUID))) {
-						KRoom r = rooms.get(Long.valueOf(tags.get(TAG_ROOM)));
-						if (r.getPipeline().getId().equals(pipe.getId())) {
+					try {
+						final String inKuid = tags.get(TAG_KUID);
+						if (inKuid != null && ignoredKuids.contains(inKuid)) {
 							return;
-						} else if (r != null) {
-							rooms.remove(r.getRoomId());
-							r.close(streamProcessor);
 						}
+						if (validTestPipeline(tags)) {
+							return;
+						}
+						if (kuid.equals(inKuid)) {
+							KStream stream = streamProcessor.getByUid(tags.get(TAG_STREAM_UID));
+							if (stream != null) {
+								if (stream.getRoomId().equals(Long.valueOf(tags.get(TAG_ROOM)))
+										&& stream.getPipeline().getId().equals(pipe.getId()))
+								{
+									return;
+								} else {
+									stream.release();
+								}
+							}
+						}
+					} catch (Exception e) {
+						log.warn("Unexpected error while checking MediaPipeline {}, tags: {}", pipe.getId(), tags, e);
 					}
 					log.warn("Invalid MediaPipeline {} detected, will be dropped, tags: {}", pipe.getId(), tags);
 					pipe.release();
@@ -431,6 +478,8 @@ public class KurentoHandler {
 					clazz = RecorderEndpoint.class;
 				} else if (curPoint instanceof PlayerEndpoint) {
 					clazz = PlayerEndpoint.class;
+				} else if (curPoint instanceof RtpEndpoint) {
+					clazz = RtpEndpoint.class;
 				}
 				final Class<? extends Endpoint> fClazz = clazz;
 				scheduler.schedule(() -> {
@@ -439,13 +488,23 @@ public class KurentoHandler {
 					}
 					// still alive
 					Endpoint point = client.getById(eoid, fClazz);
-					if (validTestPipeline(point.getMediaPipeline())) {
-						return;
-					}
 					Map<String, String> tags = tagsAsMap(point);
-					KStream stream = streamProcessor.getByUid(tags.get("outUid"));
-					if (stream != null && stream.contains(tags.get("uid"))) {
-						return;
+					try {
+						Map<String, String> pipeTags = tagsAsMap(point.getMediaPipeline());
+						final String inKuid = pipeTags.get(TAG_KUID);
+						if (ignoredKuids.contains(inKuid)) {
+							return;
+						}
+						if (validTestPipeline(pipeTags)) {
+							return;
+						}
+						KStream stream = streamProcessor.getByUid(tags.get("outUid"));
+						log.debug("Kurento::ObjectCreated -> New Endpoint {} detected, tags: {}, kStream: {}", point.getId(), tags, stream);
+						if (stream != null && stream.contains(tags.get("uid"))) {
+							return;
+						}
+					} catch (Exception e) {
+						log.warn("Unexpected error while checking Endpoint {}, tags: {}", point.getId(), tags, e);
 					}
 					log.warn("Invalid Endpoint {} detected, will be dropped, tags: {}", point.getId(), tags);
 					point.release();
@@ -453,12 +512,10 @@ public class KurentoHandler {
 			}
 		}
 
-		private boolean validTestPipeline(MediaPipeline pipeline) {
-			return validTestPipeline(tagsAsMap(pipeline));
-		}
-
 		private boolean validTestPipeline(Map<String, String> tags) {
-			return kuid.equals(tags.get(TAG_KUID)) && MODE_TEST.equals(tags.get(TAG_MODE)) && MODE_TEST.equals(tags.get(TAG_ROOM));
+			return kuid.equals(tags.get(TAG_KUID))
+					&& MODE_TEST.equals(tags.get(TAG_MODE))
+					&& MODE_TEST.equals(tags.get(TAG_ROOM));
 		}
 	}
 }

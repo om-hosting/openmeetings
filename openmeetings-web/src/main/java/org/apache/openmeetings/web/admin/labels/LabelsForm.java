@@ -26,6 +26,7 @@ import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.RequiredTextField;
 import org.apache.wicket.markup.html.form.TextArea;
 import org.apache.wicket.model.CompoundPropertyModel;
+import org.apache.wicket.model.ResourceModel;
 
 
 /**
@@ -44,9 +45,14 @@ public class LabelsForm extends AdminBaseForm<StringLabel> {
 		this.panel = panel;
 		key = label.getKey();
 		value = label.getValue();
+	}
 
-		add(new RequiredTextField<String>("key"));
+	@Override
+	protected void onInitialize() {
+		super.onInitialize();
+		add(new RequiredTextField<String>("key").setLabel(new ResourceModel("165")));
 		add(new TextArea<String>("value"));
+		setNewRecordVisible(true);
 	}
 
 	@Override
@@ -70,7 +76,7 @@ public class LabelsForm extends AdminBaseForm<StringLabel> {
 		} catch (Exception e) {
 			error("Unexpected error while saving label:" + e.getMessage());
 		}
-		setNewVisible(false);
+		setNewRecordVisible(false);
 		target.add(panel.listContainer);
 	}
 

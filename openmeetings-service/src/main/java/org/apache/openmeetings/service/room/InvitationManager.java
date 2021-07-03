@@ -19,18 +19,15 @@
 package org.apache.openmeetings.service.room;
 
 import static java.util.UUID.randomUUID;
+import static org.apache.openmeetings.db.entity.calendar.Appointment.allowedStart;
 import static org.apache.openmeetings.db.util.ApplicationHelper.ensureApplication;
 import static org.apache.openmeetings.db.util.TimezoneUtil.getTimeZone;
 
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.Map;
 import java.util.TimeZone;
 
 import org.apache.openmeetings.IApplication;
 import org.apache.openmeetings.core.mail.MailHandler;
-import org.apache.openmeetings.db.dao.room.IInvitationManager;
 import org.apache.openmeetings.db.dao.room.InvitationDao;
 import org.apache.openmeetings.db.entity.basic.MailMessage;
 import org.apache.openmeetings.db.entity.calendar.Appointment;
@@ -42,6 +39,7 @@ import org.apache.openmeetings.db.entity.room.Invitation.Valid;
 import org.apache.openmeetings.db.entity.room.Room;
 import org.apache.openmeetings.db.entity.user.User;
 import org.apache.openmeetings.db.entity.user.User.Type;
+import org.apache.openmeetings.db.manager.IInvitationManager;
 import org.apache.openmeetings.service.mail.template.InvitationTemplate;
 import org.apache.openmeetings.service.mail.template.subject.CanceledAppointmentTemplate;
 import org.apache.openmeetings.service.mail.template.subject.CreatedAppointmentTemplate;
@@ -49,7 +47,6 @@ import org.apache.openmeetings.service.mail.template.subject.SubjectEmailTemplat
 import org.apache.openmeetings.service.mail.template.subject.UpdatedAppointmentTemplate;
 import org.apache.openmeetings.util.crypt.CryptProvider;
 import org.apache.openmeetings.util.mail.IcalHandler;
-import org.apache.wicket.util.string.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,11 +73,10 @@ public class InvitationManager implements IInvitationManager {
 	 * @param mm - attendee being processed
 	 * @param type - type of the message
 	 * @param ical - should iCal appoinment be attached to message
-	 * @throws Exception in case of error happens during sending
 	 */
-	private void sendInvitionLink(Appointment a, MeetingMember mm, MessageType type, boolean ical) throws Exception	{
+	private void sendInvitionLink(Appointment a, MeetingMember mm, MessageType type, boolean ical) {
 		User owner = a.getOwner();
-		String invitorName = owner.getFirstname() + " " + owner.getLastname();
+		String invitorName = owner.getDisplayName();
 		TimeZone tz = getTimeZone(mm.getUser());
 		SubjectEmailTemplate t;
 		switch (type) {
@@ -99,45 +95,42 @@ public class InvitationManager implements IInvitationManager {
 	}
 
 	@Override
-	public void sendInvitationLink(Invitation i, MessageType type, String subject, String message, boolean ical, String baseUrl) throws Exception {
-		String invitationLink = null;
+	public void sendInvitationLink(Invitation i, MessageType type, String subject, String message, boolean ical, String baseUrl) {
+		final String invitationLink;
 		if (type != MessageType.CANCEL) {
 			IApplication app = ensureApplication(1L);
 			invitationLink = app.getOmInvitationLink(i, baseUrl);
+		} else {
+			invitationLink = null;
 		}
 		User owner = i.getInvitedBy();
 
-		String invitorName = owner.getFirstname() + " " + owner.getLastname();
-		String template = InvitationTemplate.getEmail(i.getInvitee(), invitorName, message, invitationLink);
+		String invitorName = owner.getDisplayName();
+		String template = InvitationTemplate.getEmail(i.getInvitee(), invitorName, message, invitationLink, i.getRoom() != null);
 		String email = i.getInvitee().getAddress().getEmail();
 		String replyToEmail = owner.getAddress().getEmail();
 
 		if (ical) {
-			String username = i.getInvitee().getLogin();
 			boolean isOwner = owner.getId().equals(i.getInvitee().getId());
-			IcalHandler handler = new IcalHandler(MessageType.CANCEL == type ? IcalHandler.ICAL_METHOD_CANCEL : IcalHandler.ICAL_METHOD_REQUEST);
-
-			Map<String, String> attendeeList = handler.getAttendeeData(email, username, isOwner);
-
-			List<Map<String, String>> atts = new ArrayList<>();
-			atts.add(attendeeList);
-
-			// Defining Organizer
-
-			Map<String, String> organizerAttendee = handler.getAttendeeData(replyToEmail, owner.getLogin(), isOwner);
-
 			Appointment a = i.getAppointment();
-			// Create ICal Message
-			String meetingId = handler.addNewMeeting(a.getStart(), a.getEnd(), a.getTitle(), atts, invitationLink,
-					organizerAttendee, a.getIcalId(), getTimeZone(owner).getID());
-
-			// Writing back meetingUid
-			if (Strings.isEmpty(a.getIcalId())) {
-				a.setIcalId(meetingId);
+			String desc = a.getDescription() == null ? "" : a.getDescription();
+			if (invitationLink != null) {
+				desc += (desc.isEmpty() ? "" : "\n\n\n") + invitationLink;
 			}
+			IcalHandler handler = new IcalHandler(MessageType.CANCEL == type ? IcalHandler.ICAL_METHOD_CANCEL : IcalHandler.ICAL_METHOD_REQUEST)
+					.createVEvent(getTimeZone(owner).getID(), a.getStart(), a.getEnd(), a.getTitle())
+					.addOrganizer(replyToEmail, owner.getDisplayName())
+					.setUid(a.getIcalId())
+					.addAttendee(email, i.getInvitee().getDisplayName(), isOwner)
+					.setCreated(a.getInserted())
+					.setDescription(desc)
+					.setModified(a.getUpdated())
+					.setLocation(a.getLocation())
+					.setSequence(0)
+					.build();
 
-			log.debug(handler.getICalDataAsString());
-			mailHandler.send(new MailMessage(email, replyToEmail, subject, template, handler.getIcalAsByteArray()));
+			log.debug("IcalHandler {}", handler);
+			mailHandler.send(new MailMessage(email, replyToEmail, subject, template, handler));
 		} else {
 			mailHandler.send(email, replyToEmail, subject, template);
 		}
@@ -182,13 +175,13 @@ public class InvitationManager implements IInvitationManager {
 	}
 
 	@Override
-	public Invitation getInvitation(Invitation _invitation, User inveetee, Room room
-			, boolean isPasswordProtected, String invitationpass, Valid valid,
-			User createdBy, Long languageId, Date gmtTimeStart, Date gmtTimeEnd
+	public Invitation getInvitation(Invitation inInvitation, User inveetee, Room room
+			, boolean isPasswordProtected, String invitationpass, Valid valid
+			, User createdBy, Long languageId, Date mmStart, Date mmEnd
 			, Appointment appointment) {
 
-		Invitation invitation = _invitation;
-		if (null == _invitation) {
+		Invitation invitation = inInvitation;
+		if (null == inInvitation) {
 			invitation = new Invitation();
 			invitation.setHash(randomUUID().toString());
 		}
@@ -204,8 +197,8 @@ public class InvitationManager implements IInvitationManager {
 		// valid period of Invitation
 		switch (valid) {
 			case PERIOD:
-				invitation.setValidFrom(new Date(gmtTimeStart.getTime() - (5 * 60 * 1000)));
-				invitation.setValidTo(gmtTimeEnd);
+				invitation.setValidFrom(allowedStart(mmStart));
+				invitation.setValidTo(mmEnd);
 				break;
 			case ENDLESS:
 			case ONE_TIME:
@@ -221,7 +214,6 @@ public class InvitationManager implements IInvitationManager {
 			invitation.getInvitee().setLanguageId(languageId);
 		}
 		invitation.setRoom(room);
-		invitation.setInserted(new Date());
 		invitation.setAppointment(appointment);
 
 		return invitation;
@@ -229,10 +221,10 @@ public class InvitationManager implements IInvitationManager {
 
 	@Override
 	public Invitation getInvitation(User inveetee, Room room, boolean isPasswordProtected, String invitationpass, Valid valid,
-			User createdBy, Long languageId, Date gmtTimeStart, Date gmtTimeEnd, Appointment appointment)
+			User createdBy, Long languageId, Date mmStart, Date mmEnd, Appointment appointment)
 	{
 		Invitation i = getInvitation((Invitation)null, inveetee, room, isPasswordProtected, invitationpass, valid, createdBy
-				, languageId, gmtTimeStart, gmtTimeEnd, appointment);
+				, languageId, mmStart, mmEnd, appointment);
 		i = invitationDao.update(i);
 		return i;
 	}

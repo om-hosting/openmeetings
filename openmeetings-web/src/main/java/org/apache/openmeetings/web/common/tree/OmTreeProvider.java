@@ -19,6 +19,7 @@
 package org.apache.openmeetings.web.common.tree;
 
 import static org.apache.openmeetings.db.util.AuthLevelUtil.hasAdminLevel;
+import static org.apache.openmeetings.util.OpenmeetingsVariables.isRecordingsEnabled;
 import static org.apache.openmeetings.web.app.WebSession.getRights;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
 
@@ -53,7 +54,9 @@ public class OmTreeProvider implements ITreeProvider<BaseFileItem> {
 	public static final String FILES_GROUP = "files-group-%s";
 	private final Long roomId;
 	private final List<BaseFileItem> roots = new ArrayList<>();
-	private final String PUBLIC, GROUP_FILE, GROUP_REC;
+	private final String lblPublic;
+	private final String lblGroupFile;
+	private final String lblGroupRec;
 	@SpringBean
 	private UserDao userDao;
 	@SpringBean
@@ -64,9 +67,9 @@ public class OmTreeProvider implements ITreeProvider<BaseFileItem> {
 	public OmTreeProvider(Long roomId) {
 		Injector.get().inject(this);
 		this.roomId = roomId;
-		PUBLIC = Application.getString("861");
-		GROUP_FILE = Application.getString("files.root.group");
-		GROUP_REC = Application.getString("recordings.root.group");
+		lblPublic = Application.getString("861");
+		lblGroupFile = Application.getString("files.root.group");
+		lblGroupRec = Application.getString("recordings.root.group");
 		refreshRoots(true);
 	}
 
@@ -82,27 +85,24 @@ public class OmTreeProvider implements ITreeProvider<BaseFileItem> {
 			r.setRoomId(roomId);
 			fRoot.add(r);
 		}
-		if (all) {
-			{
-				BaseFileItem r = createRoot(Application.getString("860"), RECORDINGS_MY, true);
-				r.setOwnerId(getUserId());
-				rRoot.add(r);
-			}
-			{
-				BaseFileItem r = createRoot(PUBLIC, RECORDINGS_PUBLIC, true);
-				rRoot.add(r);
-			}
+		if (all && isRecordingsEnabled()) {
+			BaseFileItem my = createRoot(Application.getString("860"), RECORDINGS_MY, true);
+			my.setOwnerId(getUserId());
+			rRoot.add(my);
+
+			BaseFileItem pub = createRoot(lblPublic, RECORDINGS_PUBLIC, true);
+			rRoot.add(pub);
 		}
 		for (GroupUser gu : userDao.get(getUserId()).getGroupUsers()) {
 			Group g = gu.getGroup();
 			boolean readOnly = g.isRestricted() && !hasAdminLevel(getRights()) && !gu.isModerator();
-			if (all) {
-				BaseFileItem r = createRoot(String.format("%s (%s)", GROUP_REC, g.getName()), String.format(RECORDINGS_GROUP, g.getId()), true);
+			if (all && isRecordingsEnabled()) {
+				BaseFileItem r = createRoot(String.format("%s (%s)", lblGroupRec, g.getName()), String.format(RECORDINGS_GROUP, g.getId()), true);
 				r.setReadOnly(readOnly);
 				r.setGroupId(g.getId());
 				rRoot.add(r);
 			}
-			BaseFileItem r = createRoot(String.format("%s (%s)", GROUP_FILE, g.getName()), String.format(FILES_GROUP, g.getId()), false);
+			BaseFileItem r = createRoot(String.format("%s (%s)", lblGroupFile, g.getName()), String.format(FILES_GROUP, g.getId()), false);
 			r.setGroupId(g.getId());
 			//group videos are read-only in recordings tree
 			r.setReadOnly(roomId == null || readOnly);
@@ -139,31 +139,31 @@ public class OmTreeProvider implements ITreeProvider<BaseFileItem> {
 		List<BaseFileItem> list = new ArrayList<>();
 		if (node instanceof Recording) {
 			Recording rec = (Recording)node;
-			List<Recording> _list;
+			List<Recording> recList;
 			if (id == null) {
 				if (node.getOwnerId() == null) {
-					_list = recDao.getRootByPublic(rec.getGroupId());
+					recList = recDao.getRootByPublic(rec.getGroupId());
 				} else {
-					_list = recDao.getRootByOwner(node.getOwnerId());
+					recList = recDao.getRootByOwner(node.getOwnerId());
 				}
 			} else {
-				_list = recDao.getByParent(id);
+				recList = recDao.getByParent(id);
 			}
-			list.addAll(_list);
+			list.addAll(recList);
 		} else {
-			List<FileItem> _list;
+			List<FileItem> fileList;
 			if (id == null) {
 				if (node.getRoomId() != null) {
-					_list = fileDao.getByRoom(node.getRoomId());
+					fileList = fileDao.getByRoom(node.getRoomId());
 				} else if (node.getGroupId() != null) {
-					_list = fileDao.getByGroup(node.getGroupId(), roomId == null ? VIDEO_TYPES : null);
+					fileList = fileDao.getByGroup(node.getGroupId(), roomId == null ? VIDEO_TYPES : null);
 				} else {
-					_list = fileDao.getByOwner(node.getOwnerId());
+					fileList = fileDao.getByOwner(node.getOwnerId());
 				}
 			} else {
-				_list = fileDao.getByParent(id, roomId == null ? VIDEO_TYPES : null);
+				fileList = fileDao.getByParent(id, roomId == null ? VIDEO_TYPES : null);
 			}
-			list.addAll(_list);
+			list.addAll(fileList);
 		}
 		if (node.isReadOnly()) {
 			for (BaseFileItem f : list) {

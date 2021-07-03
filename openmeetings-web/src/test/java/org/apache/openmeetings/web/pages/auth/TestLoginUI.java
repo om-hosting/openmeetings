@@ -47,7 +47,7 @@ import org.apache.wicket.request.resource.IResource.Attributes;
 import org.apache.wicket.util.tester.FormTester;
 import org.junit.jupiter.api.Test;
 
-public class TestLoginUI extends AbstractWicketTester {
+class TestLoginUI extends AbstractWicketTester {
 	private final static String PATH_REGISTER = "register:form";
 
 	private void checkLogin(String login, String pass) {
@@ -63,7 +63,7 @@ public class TestLoginUI extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testValidLogin() {
+	void testValidLogin() {
 		tester.startPage(MainPage.class);
 		tester.assertRenderedPage(SignInPage.class);
 
@@ -71,7 +71,7 @@ public class TestLoginUI extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testEmptyLogin() {
+	void testEmptyLogin() {
 		tester.startPage(SignInPage.class);
 		tester.assertRenderedPage(SignInPage.class);
 
@@ -91,14 +91,14 @@ public class TestLoginUI extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testEmptyRegister() {
+	void testEmptyRegister() {
 		FormTester formTester = showRegister();
 		formTester.submit("submit");
-		checkErrors(8);
+		assertTrue(countErrors(tester) > 7, "There should be at least 8 errors");
 	}
 
 	@Test
-	public void testRegister() throws ReflectiveOperationException, SecurityException {
+	void testRegister() throws ReflectiveOperationException, SecurityException {
 		tester.startPage(SignInPage.class);
 		tester.assertRenderedPage(SignInPage.class);
 
@@ -120,14 +120,14 @@ public class TestLoginUI extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testEmptyForget() {
+	void testEmptyForget() {
 		FormTester formTester = showForget();
 		formTester.submit("submit");
 		checkErrors(2);
 	}
 
 	@Test
-	public void testForget() throws SecurityException, ReflectiveOperationException {
+	void testForget() throws SecurityException, ReflectiveOperationException {
 		tester.startPage(SignInPage.class);
 		tester.assertRenderedPage(SignInPage.class);
 
@@ -135,7 +135,7 @@ public class TestLoginUI extends AbstractWicketTester {
 	}
 
 	@Test
-	public void testReset() {
+	void testReset() {
 		tester.startPage(ResetPage.class, new PageParameters().add(ResetPage.RESET_PARAM, randomUUID().toString()));
 		tester.assertRenderedPage(SignInPage.class);
 	}
@@ -153,7 +153,7 @@ public class TestLoginUI extends AbstractWicketTester {
 	}
 
 	private void performRegister(String uid, String lbl) throws ReflectiveOperationException, SecurityException {
-		AbstractAjaxBehavior b1 = getButtonBehavior("signin", 0);
+		AbstractAjaxBehavior b1 = getButtonBehavior("signin", 1);
 		tester.executeBehavior(b1);
 		FormTester formTester = tester.newFormTester(PATH_REGISTER);
 		formTester.setValue("login", getLogin(uid));
@@ -183,7 +183,7 @@ public class TestLoginUI extends AbstractWicketTester {
 
 	// complex test
 	@Test
-	public void testCompleteRegister() throws ReflectiveOperationException, SecurityException {
+	void testCompleteRegister() throws ReflectiveOperationException, SecurityException {
 		// set activation properties
 		List<Configuration> cfgs = cfgDao.get(CONFIG_EMAIL_AT_REGISTER, CONFIG_EMAIL_VERIFICATION);
 		for (Configuration c : cfgs) {

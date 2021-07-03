@@ -24,8 +24,7 @@ import static org.apache.openmeetings.db.entity.user.PrivateMessage.TRASH_FOLDER
 import static org.apache.openmeetings.util.OpenmeetingsVariables.ATTR_CLASS;
 import static org.apache.openmeetings.web.app.WebSession.getDateFormat;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelDangerConfirm;
-import static org.apache.openmeetings.web.util.CallbackFunctionHelper.addOnClick;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelDangerConfirm;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -132,9 +131,9 @@ public class MessagesContactsPanel extends UserBasePanel {
 				return object;
 			}
 		});
-	private PrivateMessageFolder NOT_MOVE_FOLDER = new PrivateMessageFolder();
-	private final DropDownChoice<PrivateMessageFolder> moveDropDown = new DropDownChoice<>("msgMove", Model.of(NOT_MOVE_FOLDER)
-		, List.of(NOT_MOVE_FOLDER)
+	private final PrivateMessageFolder notMoveFolder = new PrivateMessageFolder();
+	private final DropDownChoice<PrivateMessageFolder> moveDropDown = new DropDownChoice<>("msgMove", Model.of(notMoveFolder)
+		, List.of(notMoveFolder)
 		, new ChoiceRenderer<PrivateMessageFolder>() {
 			private static final long serialVersionUID = 1L;
 
@@ -160,8 +159,8 @@ public class MessagesContactsPanel extends UserBasePanel {
 
 	public MessagesContactsPanel(String id) {
 		super(id);
-		NOT_MOVE_FOLDER.setId(MOVE_CHOOSE);
-		NOT_MOVE_FOLDER.setFolderName(Application.getString("1243"));
+		notMoveFolder.setId(MOVE_CHOOSE);
+		notMoveFolder.setFolderName(Application.getString("1243"));
 		foldersModel.setObject(folderDao.get(0, Integer.MAX_VALUE));
 		updateMoveModel();
 
@@ -230,14 +229,7 @@ public class MessagesContactsPanel extends UserBasePanel {
 				del.setIconType(FontAwesome5IconType.times_s)
 						.add(newOkCancelDangerConfirm(this, getString("833")));
 				item.add(del);
-				item.add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						selectFolder(item, item.getModelObject().getId(), target);
-					}
-				});
+				item.add(AjaxEventBehavior.onEvent(EVT_CLICK, target -> selectFolder(item, item.getModelObject().getId(), target)));
 				setFolderClass(item);
 			}
 		}).setOutputMarkupId(true));
@@ -282,22 +274,17 @@ public class MessagesContactsPanel extends UserBasePanel {
 				item.add(new Label("from", getDisplayName(m.getFrom())));
 				item.add(new Label("subject", m.getSubject()));
 				item.add(new Label("send", getDateFormat().format(m.getInserted())));
-				item.add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						long selected = id;
-						if (selectedMessages.contains(id)) {
-							selectedMessages.remove(id);
-							selected = selectedMessages.isEmpty() ? -1 : selectedMessages.iterator().next();
-						} else {
-							selectedMessages.add(id);
-						}
-						selectMessage(selected, target);
-						target.add(container);
+				item.add(AjaxEventBehavior.onEvent(EVT_CLICK, target -> {
+					long selected = id;
+					if (selectedMessages.contains(id)) {
+						selectedMessages.remove(id);
+						selected = selectedMessages.isEmpty() ? -1 : selectedMessages.iterator().next();
+					} else {
+						selectedMessages.add(id);
 					}
-				});
+					selectMessage(selected, target);
+					target.add(container);
+				}));
 				StringBuilder cssClass = new StringBuilder(m.getIsRead() ? "" : CSS_UNREAD);
 				if (selectedMessages.contains(id)) {
 					cssClass.append(" selected");
@@ -450,7 +437,7 @@ public class MessagesContactsPanel extends UserBasePanel {
 			private static final long serialVersionUID = 1L;
 
 			private String getName(UserContact uc) {
-				return uc.getOwner().getFirstname() + " " + uc.getOwner().getLastname();
+				return uc.getOwner().getDisplayName();
 			}
 
 			@Override
@@ -462,26 +449,16 @@ public class MessagesContactsPanel extends UserBasePanel {
 					item.add(AttributeModifier.append(ATTR_CLASS, CSS_UNREAD));
 				}
 				item.add(new Label("name", getName(uc)));
-				item.add(new WebMarkupContainer("accept").add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						ContactsHelper.acceptUserContact(contactId);
-						updateContacts(target);
-					}
-				}).setVisible(uc.isPending()));
-				item.add(new WebMarkupContainer("decline").add(new AjaxEventBehavior(EVT_CLICK) {
-					private static final long serialVersionUID = 1L;
-
-					@Override
-					protected void onEvent(AjaxRequestTarget target) {
-						contactDao.delete(contactId);
-						updateContacts(target);
-					}
-				}).setVisible(uc.isPending()));
-				item.add(new WebMarkupContainer("view").add(addOnClick(String.format("showUserInfo(%s);", userId))));
-				item.add(new WebMarkupContainer("message").add(addOnClick(String.format("privateMessage(%s);", userId))).setVisible(!uc.isPending()));
+				item.add(new WebMarkupContainer("accept").add(AjaxEventBehavior.onEvent(EVT_CLICK, target -> {
+					ContactsHelper.acceptUserContact(contactId);
+					updateContacts(target);
+				})).setVisible(uc.isPending()));
+				item.add(new WebMarkupContainer("decline").add(AjaxEventBehavior.onEvent(EVT_CLICK, target -> {
+					contactDao.delete(contactId);
+					updateContacts(target);
+				})).setVisible(uc.isPending()));
+				item.add(new WebMarkupContainer("view").add(AttributeModifier.append("data-user-id", userId)));
+				item.add(new WebMarkupContainer("message").add(AttributeModifier.append("data-user-id", userId)).setVisible(!uc.isPending()));
 				BootstrapAjaxLink<String> del = new BootstrapAjaxLink<>("delete", Buttons.Type.Outline_Danger) {
 					private static final long serialVersionUID = 1L;
 
@@ -544,14 +521,14 @@ public class MessagesContactsPanel extends UserBasePanel {
 		target.add(buttons);
 	}
 
-	private static String getEmail(User u) {
-		return u == null || u.getAddress() == null ? "" : u.getAddress().getEmail();
+	private static String getDisplayName(User u) {
+		return u == null ? "" : u.getDisplayName();
 	}
 
 	private void selectMessage(long id, AjaxRequestTarget target) {
 		PrivateMessage msg = msgDao.get(id);
-		selectedMessage.addOrReplace(new Label("from", msg == null ? "" : getEmail(msg.getFrom())));
-		selectedMessage.addOrReplace(new Label("to", msg == null ? "" : getEmail(msg.getTo())));
+		selectedMessage.addOrReplace(new Label("from", msg == null ? "" : getDisplayName(msg.getFrom())));
+		selectedMessage.addOrReplace(new Label("to", msg == null ? "" : getDisplayName(msg.getTo())));
 		selectedMessage.addOrReplace(new Label("subj", msg == null ? "" : msg.getSubject()));
 		selectedMessage.addOrReplace(new Label("body", msg == null ? "" : msg.getMessage()).setEscapeModelStrings(false));
 		if (msg == null) {
@@ -586,7 +563,7 @@ public class MessagesContactsPanel extends UserBasePanel {
 		selectFolder(folder);
 		emptySelection(target);
 		selectDropDown.setModelObject(SELECT_CHOOSE);
-		moveDropDown.setModelObject(NOT_MOVE_FOLDER);
+		moveDropDown.setModelObject(notMoveFolder);
 		deleteBtn.add(AttributeModifier.replace("value", Application.getString(TRASH_FOLDER_ID.equals(id) ? "1256" : "80")));
 		readBtn.setEnabled(false);
 		unreadBtn.setEnabled(false);
@@ -607,16 +584,9 @@ public class MessagesContactsPanel extends UserBasePanel {
 		}
 	}
 
-	private static String getDisplayName(User u) {
-		return new StringBuilder().append(u.getFirstname()).append(" ")
-				.append(u.getLastname()).append(" ")
-				.append("<").append(getEmail(u)).append(">")
-				.toString();
-	}
-
 	private void updateMoveModel() {
 		List<PrivateMessageFolder> list = new ArrayList<>();
-		list.add(NOT_MOVE_FOLDER);
+		list.add(notMoveFolder);
 		list.addAll(foldersModel.getObject());
 		moveDropDown.setChoices(list);
 	}
@@ -626,7 +596,19 @@ public class MessagesContactsPanel extends UserBasePanel {
 		allContacts.setDefaultModelObject(contactDao.getContactsByUserAndStatus(getUserId(), false).size());
 		if (target != null) {
 			target.add(contacts);
+			target.appendJavaScript(getContactClickHandlers());
 		}
+	}
+
+	private CharSequence getContactClickHandlers() {
+		return "$('.messages .user.om-icon.clickable').off().click(function() {showUserInfo($(this).data('user-id'));});"
+				+ "$('.messages .new-email.om-icon.clickable').click(function() {privateMessage($(this).data('user-id'));});";
+	}
+
+	@Override
+	public void renderHead(IHeaderResponse response) {
+		super.renderHead(response);
+		response.render(OnDomReadyHeaderItem.forScript("$('.email.new.btn').click(function() {privateMessage();});" + getContactClickHandlers()));
 	}
 
 	@Override

@@ -4,6 +4,10 @@
 	display: flex;
 	height: 100%;
 }
+.adminPanel .feedback {
+	position: absolute;
+	right: 10px;
+}
 .adminNav {
 	height: var(--nav-height);
 }
@@ -11,13 +15,13 @@
 	text-overflow: ellipsis;
 	max-width: 25px;
 	overflow: hidden;
-	display: inline-block; 
+	display: inline-block;
 }
 .adminPanelColumnTable {
 	display: inline-block;
 	vertical-align: top;
 	height: 100%;
-	width: var(--list-width);
+	min-width: var(--list-width);
 }
 .adminPanelColumnTable.label .lblNav {
 	height: var(--lbl-nav-height);
@@ -41,9 +45,8 @@
 	vertical-align: top;
 	overflow-y: auto;
 }
-.adminForm legend {
-	padding: 0.2em 0.5em;
-	margin: 0px 10px;
+.adminForm legend, .installer legend {
+	padding: 0.5em 1em;
 	font-style: italic;
 	text-align: right;
 }

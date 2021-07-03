@@ -18,7 +18,7 @@
  */
 package org.apache.openmeetings.web.admin;
 
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelDangerConfirm;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelDangerConfirm;
 
 import org.apache.openmeetings.web.common.FormActionsPanel;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -32,10 +32,11 @@ public abstract class AdminActionsPanel<T> extends FormActionsPanel<T> {
 	private static final long serialVersionUID = 1L;
 	private final Label newRecord = new Label("newRecord", Model.of(""));
 	private final Form<T> form;
+	private AjaxButton newBtn;
 	private AjaxLink<Void> delBtn;
 	private AjaxLink<Void> restoreBtn;
 
-	public AdminActionsPanel(String id, final Form<T> form) {
+	protected AdminActionsPanel(String id, final Form<T> form) {
 		super(id, form);
 		this.form = form;
 	}
@@ -45,7 +46,7 @@ public abstract class AdminActionsPanel<T> extends FormActionsPanel<T> {
 		newRecord.setDefaultModelObject(getString("155"));
 		add(newRecord.setVisible(false).setOutputMarkupId(true));
 
-		final AjaxButton newBtn = new AjaxButton("btn-new", form) {
+		newBtn = new AjaxButton("btn-new", form) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -75,7 +76,7 @@ public abstract class AdminActionsPanel<T> extends FormActionsPanel<T> {
 			public void onClick(AjaxRequestTarget target) {
 				// repaint the feedback panel so that it is hidden
 				target.add(feedback);
-				setNewVisible(false);
+				setNewRecordVisible(false);
 				onDeleteSubmit(target, form);
 			}
 		};
@@ -87,7 +88,7 @@ public abstract class AdminActionsPanel<T> extends FormActionsPanel<T> {
 			public void onClick(AjaxRequestTarget target) {
 				// repaint the feedback panel so that it is hidden
 				target.add(feedback);
-				setNewVisible(false);
+				setNewRecordVisible(false);
 				onRestoreSubmit(target, form);
 			}
 		};
@@ -96,8 +97,12 @@ public abstract class AdminActionsPanel<T> extends FormActionsPanel<T> {
 		super.onInitialize();
 	}
 
-	@Override
 	public void setNewVisible(boolean visible) {
+		newBtn.setVisible(visible);
+	}
+
+	@Override
+	public void setNewRecordVisible(boolean visible) {
 		newRecord.setVisible(visible);
 	}
 

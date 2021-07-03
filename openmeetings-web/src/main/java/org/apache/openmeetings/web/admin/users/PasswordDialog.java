@@ -50,14 +50,14 @@ public class PasswordDialog extends Modal<String> {
 	}
 
 	public UserForm getUserForm() {
-		return findParent(UserForm.class);
+		return (UserForm)findParent(UsersPanel.class).get("form");
 	}
 
 	@Override
 	protected void onInitialize() {
 		header(new ResourceModel("537"));
 
-		addButton(new BootstrapAjaxButton("button", new ResourceModel("54"), form, Buttons.Type.Outline_Primary) {
+		addButton(new BootstrapAjaxButton(BUTTON_MARKUP_ID, new ResourceModel("54"), form, Buttons.Type.Outline_Primary) {
 			private static final long serialVersionUID = 1L;
 
 			@Override
@@ -78,6 +78,8 @@ public class PasswordDialog extends Modal<String> {
 						form.error(getString("error.bad.password"));
 						target.add(feedback);
 					}
+				} else {
+					PasswordDialog.this.close(target);
 				}
 			}
 		}); // OK

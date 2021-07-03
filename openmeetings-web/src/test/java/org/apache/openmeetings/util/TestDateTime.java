@@ -18,21 +18,24 @@
  */
 package org.apache.openmeetings.util;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
+import org.apache.openmeetings.web.common.datetime.AbstractOmDateTimePicker;
 import org.junit.jupiter.api.Test;
 
-public class TestDateTime {
+class TestDateTime {
 
 	@Test
-	public void test1() throws Exception {
+	void test1() throws Exception {
 		final String dateStr = "19-11-29 07:05";
 		final String pattern = "y-MM-dd HH:mm";
 		final Locale loc = new Locale.Builder()
@@ -49,5 +52,48 @@ public class TestDateTime {
 		dt = LocalDateTime.parse(dateStr
 				, DateTimeFormatter.ofPattern(pattern.replace("y", "yy"), loc));
 		assertEquals(2019, dt.getYear(), "4 digit year expected");
+	}
+
+	@Test
+	void test2() throws Exception {
+		final String dateStr = "2020-05-12, 6:43 a.m.";
+		final String jsDateStr = "2020-05-12, 6:43 AM";
+		final String pattern = "y-MM-dd, h:mm a";
+		final Locale loc = new Locale.Builder()
+				.setLanguage("en")
+				.setRegion("CA")
+				.build();
+		DateTimeFormatter formatter = new DateTimeFormatterBuilder()
+				.parseCaseInsensitive()
+				.appendPattern(pattern)
+				.toFormatter(loc);
+		assertNotNull(formatter.parse(dateStr));
+		DateTimeFormatter formatter1 = new DateTimeFormatterBuilder()
+				.parseCaseInsensitive()
+				.appendPattern(pattern)
+				.toFormatter(Locale.ENGLISH);
+		assertNotNull(formatter1.parse(jsDateStr));
+	}
+
+	@Test
+	void test3() throws Exception {
+		final Locale loc = new Locale.Builder()
+				.setLanguage("fr")
+				.setRegion("CA")
+				.build();
+		String format = AbstractOmDateTimePicker.getDateTimeFormat(loc);
+		assertEquals("yy-MM-dd HH [h] mm", AbstractOmDateTimePicker.patch(format));
+		format = AbstractOmDateTimePicker.getDateTimeFormat(Locale.ENGLISH);
+		assertEquals(format, AbstractOmDateTimePicker.patch(format));
+	}
+
+	@Test
+	void test4() throws Exception {
+		final Locale loc = new Locale.Builder()
+				.setLanguage("bg")
+				.setRegion("BG")
+				.build();
+		String format = AbstractOmDateTimePicker.getDateTimeFormat(loc);
+		assertEquals("d.MM.yy [г]., H:mm [ч].", AbstractOmDateTimePicker.patch(format));
 	}
 }

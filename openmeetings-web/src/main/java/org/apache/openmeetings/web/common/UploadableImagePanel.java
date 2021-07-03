@@ -19,7 +19,7 @@
 package org.apache.openmeetings.web.common;
 
 import static org.apache.openmeetings.util.OpenmeetingsVariables.getMaxUploadSize;
-import static org.apache.openmeetings.web.common.confirmation.ConfirmableAjaxBorder.newOkCancelConfirm;
+import static org.apache.openmeetings.web.common.confirmation.ConfirmationBehavior.newOkCancelConfirm;
 
 import java.io.File;
 import java.util.Optional;
@@ -47,11 +47,11 @@ import de.agilecoders.wicket.extensions.markup.html.bootstrap.icon.FontAwesome5I
 public abstract class UploadableImagePanel extends ImagePanel {
 	private static final long serialVersionUID = 1L;
 	private static final Logger log = LoggerFactory.getLogger(UploadableImagePanel.class);
-	private final FileUploadField fileUploadField = new FileUploadField("image", new ListModel<FileUpload>());
+	private final FileUploadField fileUploadField = new FileUploadField("image", new ListModel<>());
 	private final Form<Void> form = new Form<>("form");
 	private final boolean delayed;
 
-	public UploadableImagePanel(String id, boolean delayed) {
+	protected UploadableImagePanel(String id, boolean delayed) {
 		super(id);
 		this.delayed = delayed;
 	}
@@ -117,9 +117,7 @@ public abstract class UploadableImagePanel extends ImagePanel {
 
 	private void update(Optional<AjaxRequestTarget> target) {
 		update();
-		target.ifPresent(t -> {
-			t.add(profile, form);
-		});
+		target.ifPresent(t -> t.add(profile, form));
 	}
 
 	public void process(Optional<AjaxRequestTarget> target) {

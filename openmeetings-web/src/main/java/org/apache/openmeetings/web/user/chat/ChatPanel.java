@@ -48,7 +48,7 @@ public class ChatPanel extends Panel {
 		}
 		StringBuilder sb = new StringBuilder("$(function() {");
 		if (!chat.isShowDashboardChat()) {
-			sb.append("$('#chatPanel,#chat').show();");
+			sb.append("$('#chatPanel').show();");
 		}
 		sb.append("Chat.setRoomMode(true);")
 			.append(chat.addRoom(r))
@@ -66,7 +66,7 @@ public class ChatPanel extends Panel {
 		StringBuilder sb = new StringBuilder("$(function() {")
 				.append("Chat.setRoomMode(false);");
 		if (!chat.isShowDashboardChat()) {
-			sb.append("$('#chatPanel,#chat').hide();");
+			sb.append("$('#chatPanel').hide();");
 		}
 		sb.append("});");
 		handler.appendJavaScript(sb);
@@ -86,7 +86,7 @@ public class ChatPanel extends Panel {
 	public void renderHead(IHeaderResponse response) {
 		super.renderHead(response);
 		if (!chat.isShowDashboardChat()) {
-			response.render(OnDomReadyHeaderItem.forScript("$('#chatPanel,#chat').hide();"));
+			response.render(OnDomReadyHeaderItem.forScript("$('#chatPanel').hide();"));
 		}
 	}
 }

@@ -23,8 +23,11 @@ import static org.apache.openmeetings.util.CalendarHelper.getDate;
 import static org.apache.openmeetings.web.app.Application.getInvitationLink;
 import static org.apache.openmeetings.web.app.WebSession.AVAILABLE_TIMEZONES;
 import static org.apache.openmeetings.web.app.WebSession.getUserId;
+import static org.apache.openmeetings.web.common.BasePanel.EVT_CHANGE;
+import static org.apache.openmeetings.web.util.CalendarWebHelper.getZoneId;
 
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -38,6 +41,7 @@ import org.apache.openmeetings.db.entity.user.User.Type;
 import org.apache.openmeetings.service.room.InvitationManager;
 import org.apache.openmeetings.util.crypt.CryptProvider;
 import org.apache.openmeetings.web.app.WebSession;
+import org.apache.openmeetings.web.common.datetime.OmDateTimePicker;
 import org.apache.openmeetings.web.util.UserMultiChoice;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormChoiceComponentUpdatingBehavior;
@@ -75,7 +79,7 @@ public abstract class InvitationForm extends Form<Invitation> {
 	protected final TextField<String> subject = new TextField<>("subject", Model.of((String)null));
 	protected final TextArea<String> message = new TextArea<>("message", Model.of((String)null));
 	protected final TextField<String> url = new TextField<>("url", Model.of((String)null));
-	protected final UserMultiChoice recipients = new UserMultiChoice("recipients", new CollectionModel<>(new ArrayList<User>()));
+	protected final UserMultiChoice recipients = new UserMultiChoice("recipients", new CollectionModel<>(new ArrayList<>()));
 	protected InvitationDialog dialog;
 	@SpringBean
 	private InvitationDao inviteDao;
@@ -87,9 +91,9 @@ public abstract class InvitationForm extends Form<Invitation> {
 	public enum Action {
 		GENERATE
 		, SEND
-	};
+	}
 
-	public InvitationForm(String id) {
+	protected InvitationForm(String id) {
 		super(id, new CompoundPropertyModel<>(new Invitation()));
 		setOutputMarkupId(true);
 	}
@@ -97,15 +101,10 @@ public abstract class InvitationForm extends Form<Invitation> {
 	@Override
 	protected void onInitialize() {
 		add(subject, message);
-		recipients.setLabel(new ResourceModel("216")).setRequired(true).add(new AjaxFormComponentUpdatingBehavior("change") {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			protected void onUpdate(AjaxRequestTarget target) {
-				url.setModelObject(null);
-				updateButtons(target);
-			}
-		}).setOutputMarkupId(true);
+		recipients.setLabel(new ResourceModel("216")).setRequired(true).add(AjaxFormComponentUpdatingBehavior.onUpdate(EVT_CHANGE, target -> {
+			url.setModelObject(null);
+			updateButtons(target);
+		})).setOutputMarkupId(true);
 		add(new AjaxCheckBox("passwordProtected") {
 			private static final long serialVersionUID = 1L;
 
@@ -132,17 +131,14 @@ public abstract class InvitationForm extends Form<Invitation> {
 		add(passwd);
 		Invitation i = getModelObject();
 		passwd.setLabel(new ResourceModel("110")).setOutputMarkupId(true).setEnabled(i.isPasswordProtected());
-		add(from.setOutputMarkupId(true), to.setOutputMarkupId(true), timeZoneId.setOutputMarkupId(true));
-		timeZoneId.add(new AjaxFormComponentUpdatingBehavior("change") {
-			private static final long serialVersionUID = 1L;
-
-			@Override
-			protected void onUpdate(AjaxRequestTarget target) {
-				//no-op added to preserve selection
-			}
-		});
+		add(from.setLabel(new ResourceModel("530")).setOutputMarkupId(true)
+				, to.setLabel(new ResourceModel("531")).setOutputMarkupId(true)
+				, timeZoneId.setOutputMarkupId(true));
+		timeZoneId.add(AjaxFormComponentUpdatingBehavior.onUpdate(EVT_CHANGE, target -> {
+			//no-op added to preserve selection
+		}));
 		add(url.setOutputMarkupId(true));
-		add(lang, feedback);
+		add(lang, feedback.setOutputMarkupId(true));
 		super.onInitialize();
 	}
 
@@ -165,7 +161,6 @@ public abstract class InvitationForm extends Form<Invitation> {
 		Invitation i = new Invitation(getModelObject());
 		i.setInvitedBy(userDao.get(getUserId()));
 		i.setId(null);
-		i.setUpdated(null);
 		i.setUsed(false);
 
 		i.setPassword(CryptProvider.get().hash(i.getPassword()));
@@ -194,8 +189,9 @@ public abstract class InvitationForm extends Form<Invitation> {
 		User u = userDao.get(getUserId());
 		i.setInvitedBy(u);
 		i.setRoom(null);
-		from.setModelObject(LocalDateTime.now());
-		to.setModelObject(LocalDateTime.now().plusDays(1));
+		LocalDateTime now = ZonedDateTime.now(getZoneId()).toLocalDateTime();
+		from.setModelObject(now);
+		to.setModelObject(now.plusDays(1));
 		i.setPassword(null);
 		i.setHash(null);
 		subject.setModelObject(null);
@@ -204,7 +200,7 @@ public abstract class InvitationForm extends Form<Invitation> {
 		lang.setModelObject(u.getLanguageId());
 		url.setModelObject(null);
 		setModelObject(i);
-		recipients.setModelObject(new ArrayList<User>());
+		recipients.setModelObject(new ArrayList<>());
 		recipients.setEnabled(true);
 		passwd.setEnabled(false);
 		final boolean isPeriod = i.getValid() == Valid.PERIOD;
