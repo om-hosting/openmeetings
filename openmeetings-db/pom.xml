@@ -47,7 +47,6 @@
 		<dependency>
 			<groupId>org.wicketstuff</groupId>
 			<artifactId>wicketstuff-datastore-hazelcast</artifactId>
-			<version>${wicketstuff.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.openjpa</groupId>
