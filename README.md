@@ -1,7 +1,10 @@
 ![About Openmeetings Logo](/openmeetings-server/src/site/resources/images/logo.png)
 
-om-hosting.com enhances the Apache OpenMeetings version with additional features, see [om-hosting-README.md](/om-hosting-README.md)
+---
 
+om-hosting.com enhances [Apache OpenMeetings](https://openmeetings.apache.org) with additional features, see [om-hosting-README.md](/om-hosting-README.md)
+
+---
 
 [Apache OpenMeetings](https://openmeetings.apache.org) provides:
  - [x] **video conferencing**
