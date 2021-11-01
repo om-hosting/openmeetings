@@ -2,7 +2,7 @@
 
 ---
 
-om-hosting.com enhances [Apache OpenMeetings](https://openmeetings.apache.org) with additional features, see [om-hosting-README.md](/om-hosting-README.md)
+This is further advanced fork mainly contributed by om-hosting.com which enhances [Apache OpenMeetings](https://openmeetings.apache.org) with additional features, see [om-hosting-README.md](/om-hosting-README.md)
 
 ---
 
