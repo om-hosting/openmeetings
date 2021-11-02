@@ -1,1 +1,1 @@
-For more information visit om-hosting.com
+For more information visit [om-hosting-README.md](/om-hosting-README.md)
