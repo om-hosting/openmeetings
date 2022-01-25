@@ -18,8 +18,8 @@
  */
 package org.apache.openmeetings.util;
 
-import static org.junit.Assert.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -29,9 +29,11 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
+import org.apache.openmeetings.RegularTest;
 import org.apache.openmeetings.web.common.datetime.AbstractOmDateTimePicker;
 import org.junit.jupiter.api.Test;
 
+@RegularTest
 class TestDateTime {
 
 	@Test

@@ -20,7 +20,7 @@ package org.apache.openmeetings.service.scheduler;
 
 import static org.apache.openmeetings.util.OpenmeetingsVariables.CONFIG_DASHBOARD_SHOW_RSS;
 import static org.apache.openmeetings.util.OpenmeetingsVariables.setInitComplete;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -32,7 +32,7 @@ import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 
-import org.apache.openmeetings.AbstractWicketTester;
+import org.apache.openmeetings.AbstractWicketTesterTest;
 import org.apache.openmeetings.core.mail.MailHandler;
 import org.apache.openmeetings.db.entity.basic.Configuration;
 import org.apache.openmeetings.db.entity.user.Group;
@@ -48,7 +48,7 @@ import org.mockito.stubbing.Answer;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @ExtendWith(MockitoExtension.class)
-class TestJob extends AbstractWicketTester {
+class TestJob extends AbstractWicketTesterTest {
 	@Autowired
 	private CleanupJob cleanJob;
 	@Mock

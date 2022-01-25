@@ -431,6 +431,9 @@ select.messages.selector {
 	min-height: var(--rooms-header-height);
 	max-height: var(--rooms-header-height);
 	height: var(--rooms-header-height);
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	overflow: hidden;
 }
 #orgTabs, .rooms-area {
 	height: calc(100% - var(--rooms-header-height) - var(--buffer-size));
@@ -752,6 +755,7 @@ select.messages.selector {
 	position: fixed;
 	right: 0;
 	bottom: 0;
+	z-index: calc(var(--chat-zindex) + 2);
 }
 .popover.confirmation.show {
 	z-index: 3000; /* FIXME TODO move this to variables */

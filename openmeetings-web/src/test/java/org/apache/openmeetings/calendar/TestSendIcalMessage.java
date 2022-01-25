@@ -19,6 +19,7 @@
 package org.apache.openmeetings.calendar;
 
 import static java.util.UUID.randomUUID;
+import static org.apache.openmeetings.util.CalendarHelper.getZoneDateTime;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.ByteArrayInputStream;
@@ -26,16 +27,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
 
-import javax.activation.DataHandler;
-import javax.mail.BodyPart;
-import javax.mail.Message;
-import javax.mail.Multipart;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimeMultipart;
-
-import org.apache.openmeetings.AbstractJUnitDefaults;
+import org.apache.openmeetings.AbstractOmServerTest;
 import org.apache.openmeetings.core.mail.MailHandler;
 import org.apache.openmeetings.util.mail.ByteArrayDataSource;
 import org.apache.openmeetings.util.mail.IcalHandler;
@@ -44,7 +36,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
-class TestSendIcalMessage extends AbstractJUnitDefaults {
+import jakarta.activation.DataHandler;
+import jakarta.mail.BodyPart;
+import jakarta.mail.Message;
+import jakarta.mail.Multipart;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeBodyPart;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.internet.MimeMultipart;
+
+class TestSendIcalMessage extends AbstractOmServerTest {
 	private static final Logger log = LoggerFactory.getLogger(TestSendIcalMessage.class);
 
 	@Autowired
@@ -65,8 +66,9 @@ class TestSendIcalMessage extends AbstractJUnitDefaults {
 		Calendar endCal = Calendar.getInstance();
 		endCal.add(Calendar.HOUR_OF_DAY, 1);
 		Date end = endCal.getTime();
+		String tzid = TimeZone.getDefault().getID();
 		IcalHandler handler = new IcalHandler(IcalHandler.ICAL_METHOD_REQUEST)
-				.createVEvent(TimeZone.getDefault().getID(), start, end, "test event")
+				.createVEvent(getZoneDateTime(start, tzid), getZoneDateTime(end, tzid), "test event")
 				.setLocation("")
 				.setDescription("localhost:5080/link_openmeetings")
 				.setUid(randomUUID().toString())
@@ -91,16 +93,12 @@ class TestSendIcalMessage extends AbstractJUnitDefaults {
 
 		// -- Create a new message --
 		BodyPart msg = new MimeBodyPart();
-		msg.setDataHandler(new DataHandler(new ByteArrayDataSource(htmlBody,
-				"text/html; charset=\"utf-8\"")));
+		msg.setDataHandler(new DataHandler(new ByteArrayDataSource(htmlBody, "text/html; charset=\"utf-8\"")));
 
 		Multipart multipart = new MimeMultipart();
 
 		BodyPart iCalAttachment = new MimeBodyPart();
-		iCalAttachment.setDataHandler(new DataHandler(
-				new javax.mail.util.ByteArrayDataSource(
-						new ByteArrayInputStream(iCalMimeBody),
-						"text/calendar;method=REQUEST;charset=\"UTF-8\"")));
+		iCalAttachment.setDataHandler(new DataHandler(new jakarta.mail.util.ByteArrayDataSource(new ByteArrayInputStream(iCalMimeBody), "text/calendar;method=REQUEST;charset=\"UTF-8\"")));
 		iCalAttachment.setFileName("invite.ics");
 
 		multipart.addBodyPart(iCalAttachment);

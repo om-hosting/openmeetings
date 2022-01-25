@@ -56,6 +56,7 @@ import org.kurento.client.internal.client.RomManager;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.internal.configuration.injection.scanner.MockScanner;
 import org.mockito.invocation.InvocationOnMock;
@@ -88,10 +89,9 @@ public class BaseMockedTest {
 	@InjectMocks
 	protected KurentoHandler handler;
 
-	protected final static JSONObject MSG_BASE = new JSONObject();
-
 	@BeforeEach
-	public void setup() {
+	public void baseSetup() {
+		Mockito.reset();
 		lenient().doReturn(kServerManager).when(client).getServerManager();
 		lenient().doReturn(new TransactionImpl(romManager)).when(client).beginTransaction();
 		handler.init();
@@ -134,6 +134,10 @@ public class BaseMockedTest {
 			injectMock.when(() -> Injector.get()).thenReturn(injector);
 			task.run();
 		}
+	}
+
+	protected JSONObject getBaseMsg() {
+		return new JSONObject();
 	}
 
 	private boolean forInjection(Object o) {

@@ -16,20 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.openmeetings.backup;
+package org.apache.openmeetings.webservice.util;
 
-import java.io.Serializable;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.ext.ExceptionMapper;
 
-public class ProgressHolder implements Serializable {
-	private static final long serialVersionUID = 1L;
+import org.apache.openmeetings.db.dto.basic.ServiceResult;
+import org.apache.openmeetings.db.dto.basic.ServiceResult.Type;
+import org.apache.openmeetings.webservice.error.ServiceException;
 
-	private int progress;
-
-	public int getProgress() {
-		return progress;
-	}
-
-	public void setProgress(int progress) {
-		this.progress = progress;
+public class OmExceptionHandler implements ExceptionMapper<ServiceException> {
+	@Override
+	public Response toResponse(ServiceException exception) {
+		return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+				.entity(new ServiceResult(exception.getMessage(), Type.ERROR))
+				.header("exception", exception.getMessage())
+				.build();
 	}
 }

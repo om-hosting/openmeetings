@@ -21,31 +21,6 @@
 <!DOCTYPE html>
 <html xmlns:wicket="http://wicket.apache.org/dtds.data/wicket-9.xsd">
 <wicket:extend>
-	<form wicket:id="form" id="room-upload-form" method="post" enctype="multipart/form-data">
-		<div class="mb-4"><wicket:message key="594"/></div>
-		<div class="fileinput fileinput-new d-inline m-0" data-provides="fileinput">
-			<div class="fileinput-filename d-block"></div>
-			<span class="btn btn-file btn-outline-primary">
-				<span><wicket:message key="596"/></span>
-				<input type="file" multiple="multiple" id="room-upload-file" name="room-upload-file"/>
-			</span>
-		</div>
-		<div class="error"></div>
-		<div class="mt-3">
-			<input id="room-upload-to-wb" name="room-upload-to-wb" type="checkbox" value="true"/>&nbsp;<label for="room-upload-to-wb"><wicket:message key="1312"/></label>
-			<div class="me-3 d-none" id="room-upload-clean-block">
-				<input id="room-upload-clean" name="room-upload-clean" type="checkbox" value="true"/>&nbsp;<label for="room-upload-clean"><wicket:message key="62"/></label>
-			</div>
-		</div>
-		<input wicket:id="sid" name="room-upload-sid" type="hidden"/>
-		<input wicket:id="lastSelectedId" name="room-upload-last-selected-id" type="hidden" value=""/>
-		<input wicket:id="lastSelectedRoom" name="room-upload-last-selected-room" type="hidden" value=""/>
-		<input wicket:id="lastSelectedOwner" name="room-upload-last-selected-owner" type="hidden" value=""/>
-		<input wicket:id="lastSelectedGroup" name="room-upload-last-selected-group" type="hidden" value=""/>
-	</form>
-	<div class="progress d-none">
-		<div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-	</div>
-	<div id="progress"></div>
+	<div wicket:id="wsupload"></div>
 </wicket:extend>
 </html>
